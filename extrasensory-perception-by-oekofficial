@@ -1,0 +1,145 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local drawings = {}
+
+-- Invert a color
+local function invertColor(color)
+    return Color3.new(1 - color.R, 1 - color.G, 1 - color.B)
+end
+
+-- Health bar color based on percentage
+local function getHealthColor(percentage)
+    if percentage > 0.6 then
+        return Color3.fromRGB(0, 255, 0) -- Green
+    elseif percentage > 0.3 then
+        return Color3.fromRGB(255, 255, 0) -- Yellow
+    else
+        return Color3.fromRGB(255, 0, 0) -- Red
+    end
+end
+
+-- Get 2D screen bounds from two 3D points
+local function getScreenBounds(corner1, corner2)
+    local topLeft = Vector2.new(math.min(corner1.X, corner2.X), math.min(corner1.Y, corner2.Y))
+    local size = Vector2.new(math.abs(corner1.X - corner2.X), math.abs(corner1.Y - corner2.Y))
+    return topLeft, size
+end
+
+RunService.RenderStepped:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        local char = player.Character
+        local head = char and char:FindFirstChild("Head")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+        if player ~= LocalPlayer and head and hum then
+            local headSize = head.Size
+            local headCF = head.CFrame
+            local bodyCF, bodySize = char:GetBoundingBox()
+
+            local headCorners = {
+                headCF:PointToWorldSpace(Vector3.new(-headSize.X/2, -headSize.Y/2, -headSize.Z/2)),
+                headCF:PointToWorldSpace(Vector3.new(headSize.X/2, headSize.Y/2, headSize.Z/2))
+            }
+
+            local bodyCorners = {
+                bodyCF:PointToWorldSpace(Vector3.new(-bodySize.X/2, -bodySize.Y/2, -bodySize.Z/2)),
+                bodyCF:PointToWorldSpace(Vector3.new(bodySize.X/2, bodySize.Y/2, bodySize.Z/2))
+            }
+
+            local head1, headOn1 = Camera:WorldToViewportPoint(headCorners[1])
+            local head2, headOn2 = Camera:WorldToViewportPoint(headCorners[2])
+            local body1, bodyOn1 = Camera:WorldToViewportPoint(bodyCorners[1])
+            local body2, bodyOn2 = Camera:WorldToViewportPoint(bodyCorners[2])
+
+            if headOn1 and headOn2 and bodyOn1 and bodyOn2 then
+                if not drawings[player] then
+                    drawings[player] = {
+                        HeadBox = Drawing.new("Square"),
+                        BodyBox = Drawing.new("Square"),
+                        Name = Drawing.new("Text"),
+                        Distance = Drawing.new("Text"),
+                        HealthBar = Drawing.new("Line")
+                    }
+
+                    -- Head box (blue)
+                    drawings[player].HeadBox.Thickness = 1
+                    drawings[player].HeadBox.Color = Color3.fromRGB(0, 0, 255)
+                    drawings[player].HeadBox.Filled = false
+
+                    -- Body box (red)
+                    drawings[player].BodyBox.Thickness = 1
+                    drawings[player].BodyBox.Color = Color3.fromRGB(255, 0, 0)
+                    drawings[player].BodyBox.Filled = false
+
+                    -- Name (yellow)
+                    drawings[player].Name.Size = 16
+                    drawings[player].Name.Center = true
+                    drawings[player].Name.Outline = true
+                    drawings[player].Name.Color = Color3.fromRGB(255, 255, 0)
+
+                    -- Distance text
+                    drawings[player].Distance.Size = 16
+                    drawings[player].Distance.Center = true
+                    drawings[player].Distance.Outline = true
+
+                    -- Health bar line
+                    drawings[player].HealthBar.Thickness = 3
+                end
+
+                local topLeftH, sizeH = getScreenBounds(head1, head2)
+                local topLeftB, sizeB = getScreenBounds(body1, body2)
+
+                -- Update boxes
+                drawings[player].HeadBox.Position = topLeftH
+                drawings[player].HeadBox.Size = sizeH
+                drawings[player].HeadBox.Visible = true
+
+                drawings[player].BodyBox.Position = topLeftB
+                drawings[player].BodyBox.Size = sizeB
+                drawings[player].BodyBox.Visible = true
+
+                -- Name above head
+                drawings[player].Name.Text = player.Name
+                drawings[player].Name.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 18)
+                drawings[player].Name.Visible = true
+
+                -- Distance text with background inversion
+                local rayOrigin = Camera.CFrame.Position
+                local rayDir = (head.Position - rayOrigin).Unit * 500
+                local result = Workspace:Raycast(rayOrigin, rayDir)
+                local bgColor = result and result.Instance and result.Instance:IsA("BasePart") and result.Instance.Color or Color3.new(0, 0, 0)
+
+                local dist = math.floor((Camera.CFrame.Position - head.Position).Magnitude)
+                drawings[player].Distance.Text = dist .. " studs"
+                drawings[player].Distance.Color = invertColor(bgColor)
+                drawings[player].Distance.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y + sizeH.Y + 2)
+                drawings[player].Distance.Visible = true
+
+                -- Health bar above head
+                local healthPerc = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                local barWidth = sizeH.X * healthPerc
+                local barX = topLeftH.X
+                local barY = topLeftH.Y - 8
+
+                drawings[player].HealthBar.From = Vector2.new(barX, barY)
+                drawings[player].HealthBar.To = Vector2.new(barX + barWidth, barY)
+                drawings[player].HealthBar.Color = getHealthColor(healthPerc)
+                drawings[player].HealthBar.Visible = true
+            else
+                -- Hide if off-screen
+                for _, obj in pairs(drawings[player]) do
+                    obj.Visible = false
+                end
+            end
+        elseif drawings[player] then
+            -- Hide if no character
+            for _, obj in pairs(drawings[player]) do
+                obj.Visible = false
+            end
+        end
+    end
+end)
