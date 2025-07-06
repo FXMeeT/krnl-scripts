@@ -6,10 +6,12 @@ local LocalPlayer = Players.LocalPlayer
 
 local drawings = {}
 
+-- Invert color
 local function invertColor(color)
     return Color3.new(1 - color.R, 1 - color.G, 1 - color.B)
 end
 
+-- Health color
 local function getHealthColor(percentage)
     if percentage > 0.6 then
         return Color3.fromRGB(0, 255, 0)
@@ -20,6 +22,22 @@ local function getHealthColor(percentage)
     end
 end
 
+-- Degree to compass (N, NE, etc.)
+local function degreesToDirection(deg)
+    local dirs = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
+    local index = math.floor((deg / 45) + 0.5) % 8 + 1
+    return dirs[index]
+end
+
+-- Angle from vector
+local function getDirectionFromLook(vector)
+    local angle = math.atan2(vector.X, vector.Z)
+    local degrees = math.deg(angle)
+    if degrees < 0 then degrees = degrees + 360 end
+    return degreesToDirection(degrees), math.floor(degrees)
+end
+
+-- Screen box bounds
 local function getScreenBounds(corner1, corner2)
     local topLeft = Vector2.new(math.min(corner1.X, corner2.X), math.min(corner1.Y, corner2.Y))
     local size = Vector2.new(math.abs(corner1.X - corner2.X), math.abs(corner1.Y - corner2.Y))
@@ -31,8 +49,9 @@ RunService.RenderStepped:Connect(function()
         local char = player.Character
         local head = char and char:FindFirstChild("Head")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-        if player ~= LocalPlayer and head and hum then
+        if player ~= LocalPlayer and head and hum and hrp then
             local headSize = head.Size
             local headCF = head.CFrame
             local bodyCF, bodySize = char:GetBoundingBox()
@@ -53,36 +72,31 @@ RunService.RenderStepped:Connect(function()
             local body2, bodyOn2 = Camera:WorldToViewportPoint(bodyCorners[2])
 
             if headOn1 and headOn2 and bodyOn1 and bodyOn2 then
-                -- Initialize drawings if needed
                 if not drawings[player] then
                     drawings[player] = {
                         HeadBox = Drawing.new("Square"),
                         BodyBox = Drawing.new("Square"),
                         Name = Drawing.new("Text"),
                         Distance = Drawing.new("Text"),
-                        HealthText = Drawing.new("Text")
+                        HealthText = Drawing.new("Text"),
+                        SpeedText = Drawing.new("Text"),
+                        DirText = Drawing.new("Text")
                     }
 
-                    drawings[player].HeadBox.Thickness = 1
+                    for _, obj in pairs(drawings[player]) do
+                        if obj.ClassName == "Text" then
+                            obj.Size = 16
+                            obj.Center = true
+                            obj.Outline = true
+                        elseif obj.ClassName == "Square" then
+                            obj.Thickness = 1
+                            obj.Filled = false
+                        end
+                    end
+
                     drawings[player].HeadBox.Color = Color3.fromRGB(0, 0, 255)
-                    drawings[player].HeadBox.Filled = false
-
-                    drawings[player].BodyBox.Thickness = 1
                     drawings[player].BodyBox.Color = Color3.fromRGB(255, 0, 0)
-                    drawings[player].BodyBox.Filled = false
-
-                    drawings[player].Name.Size = 16
-                    drawings[player].Name.Center = true
-                    drawings[player].Name.Outline = true
                     drawings[player].Name.Color = Color3.fromRGB(255, 255, 0)
-
-                    drawings[player].Distance.Size = 16
-                    drawings[player].Distance.Center = true
-                    drawings[player].Distance.Outline = true
-
-                    drawings[player].HealthText.Size = 16
-                    drawings[player].HealthText.Center = true
-                    drawings[player].HealthText.Outline = true
                 end
 
                 local topLeftH, sizeH = getScreenBounds(head1, head2)
@@ -99,18 +113,29 @@ RunService.RenderStepped:Connect(function()
                 drawings[player].BodyBox.Visible = true
 
                 -- Name
-                local nameLabel = drawings[player].Name
-                nameLabel.Text = player.Name
-                nameLabel.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 18)
-                nameLabel.Visible = true
+                drawings[player].Name.Text = player.Name
+                drawings[player].Name.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 18)
+                drawings[player].Name.Visible = true
 
-                -- Health Text above name
+                -- Health
                 local healthPerc = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                local healthText = drawings[player].HealthText
-                healthText.Text = "Health: " .. tostring(math.floor(healthPerc * 100))
-                healthText.Color = getHealthColor(healthPerc)
-                healthText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 36)
-                healthText.Visible = true
+                drawings[player].HealthText.Text = "Health: " .. tostring(math.floor(healthPerc * 100))
+                drawings[player].HealthText.Color = getHealthColor(healthPerc)
+                drawings[player].HealthText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 36)
+                drawings[player].HealthText.Visible = true
+
+                -- Speed
+                drawings[player].SpeedText.Text = "Speed: " .. tostring(math.floor(hum.WalkSpeed))
+                drawings[player].SpeedText.Color = Color3.fromRGB(0, 200, 255)
+                drawings[player].SpeedText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 54)
+                drawings[player].SpeedText.Visible = true
+
+                -- Direction
+                local dir, deg = getDirectionFromLook(hrp.CFrame.LookVector)
+                drawings[player].DirText.Text = "Direction: " .. dir .. " " .. string.format("%02d°", deg)
+                drawings[player].DirText.Color = Color3.fromRGB(180, 180, 255)
+                drawings[player].DirText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 72)
+                drawings[player].DirText.Visible = true
 
                 -- Distance
                 local rayOrigin = Camera.CFrame.Position
@@ -118,22 +143,16 @@ RunService.RenderStepped:Connect(function()
                 local result = Workspace:Raycast(rayOrigin, rayDir)
                 local bgColor = result and result.Instance and result.Instance:IsA("BasePart") and result.Instance.Color or Color3.new(0, 0, 0)
 
-                local distText = drawings[player].Distance
-                distText.Text = tostring(math.floor((Camera.CFrame.Position - head.Position).Magnitude)) .. " studs"
-                distText.Color = invertColor(bgColor)
-                distText.Position = Vector2.new(topLeftB.X + sizeB.X / 2, topLeftB.Y + sizeB.Y + 2)
-                distText.Visible = true
+                local dist = math.floor((Camera.CFrame.Position - head.Position).Magnitude)
+                drawings[player].Distance.Text = dist .. " studs"
+                drawings[player].Distance.Color = invertColor(bgColor)
+                drawings[player].Distance.Position = Vector2.new(topLeftB.X + sizeB.X/2, topLeftB.Y + sizeB.Y + 2)
+                drawings[player].Distance.Visible = true
             else
-                -- Hide if not visible
-                for _, obj in pairs(drawings[player]) do
-                    obj.Visible = false
-                end
+                for _, obj in pairs(drawings[player]) do obj.Visible = false end
             end
         elseif drawings[player] then
-            -- Hide if character invalid
-            for _, obj in pairs(drawings[player]) do
-                obj.Visible = false
-            end
+            for _, obj in pairs(drawings[player]) do obj.Visible = false end
         end
     end
 end)
