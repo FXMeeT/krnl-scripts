@@ -6,12 +6,10 @@ local LocalPlayer = Players.LocalPlayer
 
 local drawings = {}
 
--- Invert color
 local function invertColor(color)
     return Color3.new(1 - color.R, 1 - color.G, 1 - color.B)
 end
 
--- Health color
 local function getHealthColor(percentage)
     if percentage > 0.6 then
         return Color3.fromRGB(0, 255, 0)
@@ -22,14 +20,12 @@ local function getHealthColor(percentage)
     end
 end
 
--- Degree to compass (N, NE, etc.)
 local function degreesToDirection(deg)
     local dirs = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
     local index = math.floor((deg / 45) + 0.5) % 8 + 1
     return dirs[index]
 end
 
--- Angle from vector
 local function getDirectionFromLook(vector)
     local angle = math.atan2(vector.X, vector.Z)
     local degrees = math.deg(angle)
@@ -37,7 +33,6 @@ local function getDirectionFromLook(vector)
     return degreesToDirection(degrees), math.floor(degrees)
 end
 
--- Screen box bounds
 local function getScreenBounds(corner1, corner2)
     local topLeft = Vector2.new(math.min(corner1.X, corner2.X), math.min(corner1.Y, corner2.Y))
     local size = Vector2.new(math.abs(corner1.X - corner2.X), math.abs(corner1.Y - corner2.Y))
@@ -52,6 +47,15 @@ RunService.RenderStepped:Connect(function()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
         if player ~= LocalPlayer and head and hum and hrp then
+            if hum.Health <= 0 then
+                if drawings[player] then
+                    for _, obj in pairs(drawings[player]) do
+                        obj.Visible = false
+                    end
+                end
+                continue
+            end
+
             local headSize = head.Size
             local headCF = head.CFrame
             local bodyCF, bodySize = char:GetBoundingBox()
@@ -102,42 +106,35 @@ RunService.RenderStepped:Connect(function()
                 local topLeftH, sizeH = getScreenBounds(head1, head2)
                 local topLeftB, sizeB = getScreenBounds(body1, body2)
 
-                -- Head box
                 drawings[player].HeadBox.Position = topLeftH
                 drawings[player].HeadBox.Size = sizeH
                 drawings[player].HeadBox.Visible = true
 
-                -- Body box
                 drawings[player].BodyBox.Position = topLeftB
                 drawings[player].BodyBox.Size = sizeB
                 drawings[player].BodyBox.Visible = true
 
-                -- Name
                 drawings[player].Name.Text = player.Name
                 drawings[player].Name.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 18)
                 drawings[player].Name.Visible = true
 
-                -- Health
                 local healthPerc = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                 drawings[player].HealthText.Text = "Health: " .. tostring(math.floor(healthPerc * 100))
                 drawings[player].HealthText.Color = getHealthColor(healthPerc)
                 drawings[player].HealthText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 36)
                 drawings[player].HealthText.Visible = true
 
-                -- Speed
                 drawings[player].SpeedText.Text = "Speed: " .. tostring(math.floor(hum.WalkSpeed))
                 drawings[player].SpeedText.Color = Color3.fromRGB(0, 200, 255)
                 drawings[player].SpeedText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 54)
                 drawings[player].SpeedText.Visible = true
 
-                -- Direction
                 local dir, deg = getDirectionFromLook(hrp.CFrame.LookVector)
                 drawings[player].DirText.Text = "Direction: " .. dir .. " " .. string.format("%02d°", deg)
                 drawings[player].DirText.Color = Color3.fromRGB(180, 180, 255)
                 drawings[player].DirText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 72)
                 drawings[player].DirText.Visible = true
 
-                -- Distance
                 local rayOrigin = Camera.CFrame.Position
                 local rayDir = (head.Position - rayOrigin).Unit * 500
                 local result = Workspace:Raycast(rayOrigin, rayDir)
@@ -149,10 +146,16 @@ RunService.RenderStepped:Connect(function()
                 drawings[player].Distance.Position = Vector2.new(topLeftB.X + sizeB.X/2, topLeftB.Y + sizeB.Y + 2)
                 drawings[player].Distance.Visible = true
             else
-                for _, obj in pairs(drawings[player]) do obj.Visible = false end
+                if drawings[player] then
+                    for _, obj in pairs(drawings[player]) do
+                        obj.Visible = false
+                    end
+                end
             end
         elseif drawings[player] then
-            for _, obj in pairs(drawings[player]) do obj.Visible = false end
+            for _, obj in pairs(drawings[player]) do
+                obj.Visible = false
+            end
         end
     end
 end)
