@@ -6,6 +6,19 @@ local LocalPlayer = Players.LocalPlayer
 
 local drawings = {}
 
+-- Top-center HUD drawings
+local topSpeedText = Drawing.new("Text")
+topSpeedText.Size = 18
+topSpeedText.Center = true
+topSpeedText.Outline = true
+topSpeedText.Color = Color3.fromRGB(0, 255, 255)
+
+local topDirText = Drawing.new("Text")
+topDirText.Size = 18
+topDirText.Center = true
+topDirText.Outline = true
+topDirText.Color = Color3.fromRGB(255, 255, 255)
+
 -- Utilities
 local function invertColor(color)
     return Color3.new(1 - color.R, 1 - color.G, 1 - color.B)
@@ -139,18 +152,19 @@ RunService.RenderStepped:Connect(function()
         local topLeftH, sizeH = getScreenBounds(head1, head2)
         local topLeftB, sizeB = getScreenBounds(body1, body2)
 
-        -- Update Head Box
         local d = drawings[player]
+
+        -- Head Box
         d.HeadBox.Position = topLeftH
         d.HeadBox.Size = sizeH
         d.HeadBox.Visible = true
 
-        -- Update Body Box
+        -- Body Box
         d.BodyBox.Position = topLeftB
         d.BodyBox.Size = sizeB
         d.BodyBox.Visible = true
 
-        -- Player Name
+        -- Name
         d.Name.Text = player.Name
         d.Name.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 18)
         d.Name.Visible = true
@@ -162,8 +176,9 @@ RunService.RenderStepped:Connect(function()
         d.HealthText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 36)
         d.HealthText.Visible = true
 
-        -- Speed
-        d.SpeedText.Text = "Speed: " .. tostring(math.floor(hum.WalkSpeed))
+        -- True Speed using Velocity Magnitude
+        local velocity = hrp.Velocity.Magnitude
+        d.SpeedText.Text = "Speed: " .. tostring(math.floor(velocity))
         d.SpeedText.Color = Color3.fromRGB(0, 200, 255)
         d.SpeedText.Position = Vector2.new(topLeftH.X + sizeH.X/2, topLeftH.Y - 54)
         d.SpeedText.Visible = true
@@ -186,5 +201,24 @@ RunService.RenderStepped:Connect(function()
         d.Distance.Color = invertColor(bgColor)
         d.Distance.Position = Vector2.new(topLeftB.X + sizeB.X/2, topLeftB.Y + sizeB.Y + 2)
         d.Distance.Visible = true
+    end
+
+    -- Top-center HUD for LocalPlayer
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local myHRP = LocalPlayer.Character.HumanoidRootPart
+        local mySpeed = myHRP.Velocity.Magnitude
+        local dirStr, deg = getDirectionFromLook(myHRP.CFrame.LookVector)
+
+        local viewSize = Camera.ViewportSize
+        topSpeedText.Position = Vector2.new(viewSize.X / 2, 20)
+        topSpeedText.Text = "Your Speed: " .. math.floor(mySpeed)
+        topSpeedText.Visible = true
+
+        topDirText.Position = Vector2.new(viewSize.X / 2, 40)
+        topDirText.Text = "Your Direction: " .. dirStr .. " (" .. math.floor(deg) .. "°)"
+        topDirText.Visible = true
+    else
+        topSpeedText.Visible = false
+        topDirText.Visible = false
     end
 end)
