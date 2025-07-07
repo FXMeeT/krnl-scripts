@@ -209,7 +209,7 @@ RunService.RenderStepped:Connect(function()
 		d.HealthText.Position = Vector2.new(topLeftH.X + sizeH.X / 2, topLeftH.Y - 36)
 		d.HealthText.Visible = true
 
-		local velocity = hrp.Velocity.Magnitude
+		local velocity = hrp.AssemblyLinearVelocity.Magnitude
 		d.SpeedText.Text = "Speed: " .. tostring(math.floor(velocity))
 		d.SpeedText.Color = Color3.fromRGB(0, 200, 255)
 		d.SpeedText.Position = Vector2.new(topLeftH.X + sizeH.X / 2, topLeftH.Y - 54)
@@ -234,7 +234,8 @@ RunService.RenderStepped:Connect(function()
 	-- Update local player's HUD
 	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 		local myHRP = LocalPlayer.Character.HumanoidRootPart
-		local mySpeed = myHRP.Velocity.Magnitude
+		local myVelocity = myHRP.AssemblyLinearVelocity
+		local mySpeed = myVelocity.Magnitude
 		local dirStr, deg = getDirectionFromLook(myHRP.CFrame.LookVector)
 
 		topSpeedText.Text = "Speed: " .. math.floor(mySpeed)
