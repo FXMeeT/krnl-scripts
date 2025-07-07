@@ -59,7 +59,6 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- Utilities
 local function invertColor(color)
 	return Color3.new(1 - color.R, 1 - color.G, 1 - color.B)
 end
@@ -93,7 +92,6 @@ local function getScreenBounds(corner1, corner2)
 	return topLeft, size
 end
 
--- Refresh ESP when character is added
 local function setupCharacterRefresh(player)
 	player.CharacterAdded:Connect(function()
 		drawings[player] = nil
@@ -112,7 +110,6 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 
--- Render loop
 RunService.RenderStepped:Connect(function()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player == LocalPlayer then continue end
@@ -176,13 +173,14 @@ RunService.RenderStepped:Connect(function()
 					obj.Center = true
 					obj.Outline = true
 				elseif obj.ClassName == "Square" then
-					obj.Thickness = 1
+					obj.Thickness = 2
 					obj.Filled = false
+					obj.Transparency = 1
 				end
 			end
 
-			drawings[player].HeadBox.Color = Color3.fromRGB(0, 0, 255)
-			drawings[player].BodyBox.Color = Color3.fromRGB(255, 0, 0)
+			drawings[player].HeadBox.Color = Color3.fromRGB(0, 150, 255) -- Blue
+			drawings[player].BodyBox.Color = Color3.fromRGB(255, 60, 60) -- Red
 			drawings[player].Name.Color = Color3.fromRGB(255, 255, 0)
 		end
 
