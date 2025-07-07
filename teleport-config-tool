@@ -1,0 +1,298 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
+
+-- Folder & File Setup
+local folder = "PositionConfigs"
+local configFile = folder .. "/data.json"
+
+-- Ensure folder exists
+if not isfolder(folder) then
+    makefolder(folder)
+end
+
+-- Load or initialize config
+local data = {
+    positions = {},
+    configs = {}
+}
+
+if isfile(configFile) then
+    data = HttpService:JSONDecode(readfile(configFile))
+end
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "PositionManager"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 350, 0, 400)
+frame.Position = UDim2.new(0.5, -175, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "Position Manager"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 16
+
+-- Close and Minimize
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.Text = "X"
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+local minimizeBtn = Instance.new("TextButton", frame)
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -60, 0, 0)
+minimizeBtn.Text = "-"
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+minimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    for _, child in ipairs(frame:GetChildren()) do
+        if child:IsA("TextButton") or child:IsA("TextBox") then
+            child.Visible = not minimized
+        end
+    end
+end)
+
+-- Utility UI function
+local function createButton(text, y, callback)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Position = UDim2.new(0, 10, 0, y)
+    btn.Text = text
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 16
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- Prompt confirmation
+local function confirm(promptText, onConfirm)
+    local confirmGui = Instance.new("Frame", frame)
+    confirmGui.Size = UDim2.new(0, 300, 0, 120)
+    confirmGui.Position = UDim2.new(0.5, -150, 0.5, -60)
+    confirmGui.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+
+    local text = Instance.new("TextLabel", confirmGui)
+    text.Size = UDim2.new(1, 0, 0, 60)
+    text.Position = UDim2.new(0, 0, 0, 0)
+    text.Text = promptText
+    text.TextColor3 = Color3.new(1, 1, 1)
+    text.BackgroundTransparency = 1
+    text.Font = Enum.Font.SourceSans
+    text.TextSize = 16
+
+    local yes = Instance.new("TextButton", confirmGui)
+    yes.Size = UDim2.new(0.5, -5, 0, 40)
+    yes.Position = UDim2.new(0, 5, 0, 70)
+    yes.Text = "YES"
+    yes.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    yes.TextColor3 = Color3.new(0, 0, 0)
+    yes.MouseButton1Click:Connect(function()
+        confirmGui:Destroy()
+        onConfirm(true)
+    end)
+
+    local cancel = Instance.new("TextButton", confirmGui)
+    cancel.Size = UDim2.new(0.5, -5, 0, 40)
+    cancel.Position = UDim2.new(0.5, 0, 0, 70)
+    cancel.Text = "CANCEL"
+    cancel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    cancel.TextColor3 = Color3.new(1, 1, 1)
+    cancel.MouseButton1Click:Connect(function()
+        confirmGui:Destroy()
+        onConfirm(false)
+    end)
+end
+
+-- Save JSON
+local function saveData()
+    writefile(configFile, HttpService:JSONEncode(data))
+end
+
+-- Add Position
+createButton("Add Position", 40, function()
+    local pos = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not pos then return end
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(1, -20, 0, 30)
+    input.Position = UDim2.new(0, 10, 0, 340)
+    input.PlaceholderText = "Enter position name"
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 16
+    input.FocusLost:Connect(function(enter)
+        if enter and input.Text ~= "" then
+            data.positions[input.Text] = pos.Position
+            saveData()
+            input:Destroy()
+        else
+            input:Destroy()
+        end
+    end)
+end)
+
+-- Rename Position
+createButton("Rename Position", 80, function()
+    local oldName = "" -- Placeholder for input
+    local newName = "" -- New name prompt
+
+    -- First input: select existing name
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(1, -20, 0, 30)
+    input.Position = UDim2.new(0, 10, 0, 340)
+    input.PlaceholderText = "Enter existing position name"
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 16
+    input.FocusLost:Connect(function(enter)
+        if enter and input.Text ~= "" and data.positions[input.Text] then
+            oldName = input.Text
+            input:Destroy()
+
+            -- Now ask for new name
+            local input2 = Instance.new("TextBox", frame)
+            input2.Size = UDim2.new(1, -20, 0, 30)
+            input2.Position = UDim2.new(0, 10, 0, 340)
+            input2.PlaceholderText = "Enter new position name"
+            input2.TextColor3 = Color3.new(1, 1, 1)
+            input2.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            input2.Font = Enum.Font.SourceSans
+            input2.TextSize = 16
+            input2.FocusLost:Connect(function(enter2)
+                if enter2 and input2.Text ~= "" then
+                    data.positions[input2.Text] = data.positions[oldName]
+                    data.positions[oldName] = nil
+                    saveData()
+                end
+                input2:Destroy()
+            end)
+        else
+            input:Destroy()
+        end
+    end)
+end)
+
+-- Delete Position
+createButton("Delete Position", 120, function()
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(1, -20, 0, 30)
+    input.Position = UDim2.new(0, 10, 0, 340)
+    input.PlaceholderText = "Enter position name to delete"
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 16
+    input.FocusLost:Connect(function(enter)
+        if enter and data.positions[input.Text] then
+            local name = input.Text
+            confirm("Are you sure you want to delete: " .. name, function(yes)
+                if yes then
+                    data.positions[name] = nil
+                    saveData()
+                end
+            end)
+        end
+        input:Destroy()
+    end)
+end)
+
+-- Save Configuration
+createButton("SAVECON", 160, function()
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(1, -20, 0, 30)
+    input.Position = UDim2.new(0, 10, 0, 340)
+    input.PlaceholderText = "Enter config name to save"
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 16
+    input.FocusLost:Connect(function(enter)
+        if enter and input.Text ~= "" then
+            local name = input.Text
+            data.configs[name] = {}
+            for k, _ in pairs(data.positions) do
+                table.insert(data.configs[name], k)
+            end
+            saveData()
+        end
+        input:Destroy()
+    end)
+end)
+
+-- Rename Config
+createButton("RENCON", 200, function()
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(1, -20, 0, 30)
+    input.Position = UDim2.new(0, 10, 0, 340)
+    input.PlaceholderText = "Old config name"
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 16
+    input.FocusLost:Connect(function(enter)
+        if enter and data.configs[input.Text] then
+            local old = input.Text
+            input:Destroy()
+            local input2 = Instance.new("TextBox", frame)
+            input2.Size = UDim2.new(1, -20, 0, 30)
+            input2.Position = UDim2.new(0, 10, 0, 340)
+            input2.PlaceholderText = "New config name"
+            input2.TextColor3 = Color3.new(1, 1, 1)
+            input2.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            input2.Font = Enum.Font.SourceSans
+            input2.TextSize = 16
+            input2.FocusLost:Connect(function(e2)
+                if e2 and input2.Text ~= "" then
+                    data.configs[input2.Text] = data.configs[old]
+                    data.configs[old] = nil
+                    saveData()
+                end
+                input2:Destroy()
+            end)
+        else
+            input:Destroy()
+        end
+    end)
+end)
+
+-- Delete Config
+createButton("DELCON", 240, function()
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(1, -20, 0, 30)
+    input.Position = UDim2.new(0, 10, 0, 340)
+    input.PlaceholderText = "Config name to delete"
+    input.TextColor3 = Color3.new(1, 1, 1)
+    input.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 16
+    input.FocusLost:Connect(function(enter)
+        if enter and data.configs[input.Text] then
+            local name = input.Text
+            confirm("Are you sure you want to delete config: " .. name, function(yes)
+                if yes then
+                    data.configs[name] = nil
+                    saveData()
+                end
+            end)
+        end
+        input:Destroy()
+    end)
+end)
