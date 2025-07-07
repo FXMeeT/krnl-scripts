@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
@@ -8,12 +9,13 @@ local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 gui.Name = "TrackerUI"
 gui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame", gui)
+local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 240, 0, 380)
 frame.Position = UDim2.new(0, 100, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
+frame.Parent = gui
 
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, 0, 0, 30)
@@ -64,7 +66,7 @@ local tracking = true
 local facePart = "Head"
 local followMode = "Body + Camera" -- Options: "Body Only", "Camera Only", "Body + Camera"
 
--- Functions
+-- Refresh player list
 local function refreshList()
 	scroll:ClearAllChildren()
 	local y = 0
@@ -94,7 +96,7 @@ Players.PlayerRemoving:Connect(function(p)
 	refreshList()
 end)
 
--- Toggles
+-- Button actions
 toggle.MouseButton1Click:Connect(function()
 	tracking = not tracking
 	toggle.Text = tracking and "Deactivate" or "Activate"
@@ -116,7 +118,7 @@ modeToggle.MouseButton1Click:Connect(function()
 	modeToggle.Text = "Mode: " .. followMode
 end)
 
--- Main update loop
+-- Body/Camera facing loop
 RunService.RenderStepped:Connect(function()
 	if not tracking or not selectedPlayer or not selectedPlayer.Character then return end
 
@@ -125,17 +127,55 @@ RunService.RenderStepped:Connect(function()
 	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
 	if target and myHRP then
-		local direction = (target.Position - myHRP.Position)
-		direction = Vector3.new(direction.X, 0, direction.Z).Unit
-		local lookAt = myHRP.Position + direction
+		local targetPos = target.Position
+		local myPos = myHRP.Position
+
+		local bodyLook = CFrame.lookAt(myPos, targetPos)
 
 		if followMode == "Body + Camera" or followMode == "Body Only" then
-			myHRP.CFrame = CFrame.new(myHRP.Position, lookAt)
+			myHRP.CFrame = bodyLook
 		end
 
 		if followMode == "Body + Camera" or followMode == "Camera Only" then
-			local camPos = Camera.CFrame.Position
-			Camera.CFrame = CFrame.new(camPos, target.Position)
+			local camPos = myHRP.Position + Vector3.new(0, 2, 0)
+			Camera.CFrame = CFrame.lookAt(camPos, targetPos)
+		end
+	end
+end)
+
+-- Auto-propel any user-created part toward selected target
+workspace.DescendantAdded:Connect(function(obj)
+	if not tracking then return end
+	if not selectedPlayer or not selectedPlayer.Character then return end
+	if not obj:IsA("BasePart") then return end
+
+	-- Check if the object is likely "yours"
+	local isYours = false
+
+	-- Creator tags (common in weapons)
+	if obj:FindFirstChild("creator") and obj.creator.Value == LocalPlayer then
+		isYours = true
+	elseif obj:FindFirstChild("Shooter") and obj.Shooter.Value == LocalPlayer then
+		isYours = true
+	elseif obj:IsDescendantOf(LocalPlayer.Character) then
+		isYours = true
+	end
+
+	if isYours then
+		task.wait() -- Allow object to fully appear in workspace
+
+		local targetPart = selectedPlayer.Character:FindFirstChild(facePart)
+		if targetPart then
+			local direction = (targetPart.Position - obj.Position).Unit
+			local speed = 200 -- adjust if needed
+			obj.CFrame = CFrame.lookAt(obj.Position, targetPart.Position)
+
+			-- If it's physically simulated
+			if obj:IsA("BasePart") and obj:IsDescendantOf(workspace) then
+				local success = pcall(function()
+					obj.AssemblyLinearVelocity = direction * speed
+				end)
+			end
 		end
 	end
 end)
