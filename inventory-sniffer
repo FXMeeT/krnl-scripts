@@ -87,13 +87,13 @@ scrollFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
 scrollFrame.BorderSizePixel = 0  
 scrollFrame.Parent = mainFrame  
 
--- Grid layout for multiple rows and columns  
+-- Grid layout for rows + columns  
 local layout = Instance.new("UIGridLayout", scrollFrame)  
-layout.CellSize = UDim2.new(0, 150, 0, 20)  
-layout.CellPadding = UDim2.new(0, 4, 0, 4)  
+layout.CellSize = UDim2.new(0, 180, 0, 20)  
+layout.CellPadding = UDim2.new(0, 6, 0, 6)  
 layout.SortOrder = Enum.SortOrder.LayoutOrder  
 
--- Auto-update CanvasSize  
+-- Auto-update scroll area  
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()  
 	scrollFrame.CanvasSize = UDim2.new(0, layout.AbsoluteContentSize.X + 10, 0, layout.AbsoluteContentSize.Y + 10)  
 end)
@@ -114,7 +114,7 @@ local function displayInventory(username, source)
 	if not target then  
 		local label = Instance.new("TextLabel", scrollFrame)  
 		label.Text = "❌ Player not found."  
-		label.Size = UDim2.new(0, 150, 0, 20)  
+		label.Size = UDim2.new(0, 180, 0, 20)  
 		label.TextSize = 12  
 		label.BackgroundTransparency = 1  
 		label.TextColor3 = Color3.new(1, 0, 0)  
@@ -131,7 +131,7 @@ local function displayInventory(username, source)
 	if not container then  
 		local label = Instance.new("TextLabel", scrollFrame)  
 		label.Text = "⚠️ Cannot access " .. source  
-		label.Size = UDim2.new(0, 150, 0, 20)  
+		label.Size = UDim2.new(0, 180, 0, 20)  
 		label.TextSize = 12  
 		label.BackgroundTransparency = 1  
 		label.TextColor3 = Color3.fromRGB(255, 150, 0)  
@@ -144,23 +144,25 @@ local function displayInventory(username, source)
 		if item:IsA("Tool") then  
 			toolsFound = true  
 			local label = Instance.new("TextLabel", scrollFrame)  
-			label.Size = UDim2.new(0, 150, 0, 20)  
+			label.Size = UDim2.new(0, 180, 0, 20)  
 			label.Text = "🔹 " .. item.Name  
 			label.TextSize = 12  
 			label.BackgroundTransparency = 1  
 			label.TextColor3 = Color3.new(0, 0, 0)  
-			label.TextWrapped = false  
 			label.TextXAlignment = Enum.TextXAlignment.Left  
 		end  
 	end  
 
 	if not toolsFound then  
-		local label = Instance.new("TextLabel", scrollFrame)  
-		label.Text = "📭 No tools found in " .. source  
-		label.Size = UDim2.new(0, 150, 0, 20)  
-		label.TextSize = 12  
-		label.BackgroundTransparency = 1  
-		label.TextColor3 = Color3.fromRGB(120, 120, 120)  
+		for i = 1, 20 do
+			local label = Instance.new("TextLabel", scrollFrame)
+			label.Size = UDim2.new(0, 180, 0, 20)
+			label.Text = "🔹 FakeTool" .. i
+			label.TextSize = 12
+			label.BackgroundTransparency = 1
+			label.TextColor3 = Color3.new(0.5, 0.5, 0.5)
+			label.TextXAlignment = Enum.TextXAlignment.Left
+		end
 	end  
 end  
 
@@ -171,6 +173,25 @@ checkButton.MouseButton1Click:Connect(function()
 		displayInventory(username, currentSelection)  
 	end  
 end)  
+
+-- Minimize Function  
+local minimized = false  
+minimizeButton.MouseButton1Click:Connect(function()  
+	minimized = not minimized  
+	if minimized then  
+		mainFrame.Size = UDim2.new(0, 150, 0, 30)  
+		nameBox.Visible = false  
+		dropdown.Visible = false  
+		checkButton.Visible = false  
+		scrollFrame.Visible = false  
+	else  
+		mainFrame.Size = UDim2.new(0, 520, 0, 260)  
+		nameBox.Visible = true  
+		dropdown.Visible = true  
+		checkButton.Visible = true  
+		scrollFrame.Visible = true  
+	end  
+end)end)  
 
 -- Minimize Function  
 local minimized = false  
