@@ -1,0 +1,103 @@
+--// GUI Creation
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+local ChatService = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents")
+
+-- Create ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "CustomChatGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 120)
+frame.Position = UDim2.new(0.05, 0, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- Header (for dragging + minimize)
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 25)
+header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+header.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -30, 1, 0)
+title.Position = UDim2.new(0, 5, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Custom Chat"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+title.Parent = header
+
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 25, 1, 0)
+minimizeButton.Position = UDim2.new(1, -25, 0, 0)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Font = Enum.Font.SourceSansBold
+minimizeButton.TextSize = 18
+minimizeButton.Parent = header
+
+-- TextBox
+local textbox = Instance.new("TextBox")
+textbox.Size = UDim2.new(1, -20, 0, 40)
+textbox.Position = UDim2.new(0, 10, 0, 35)
+textbox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+textbox.PlaceholderText = "Type your message..."
+textbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+textbox.TextSize = 18
+textbox.Font = Enum.Font.SourceSans
+textbox.Parent = frame
+
+-- Send Button
+local sendButton = Instance.new("TextButton")
+sendButton.Size = UDim2.new(1, -20, 0, 30)
+sendButton.Position = UDim2.new(0, 10, 0, 80)
+sendButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+sendButton.Text = "Send"
+sendButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+sendButton.Font = Enum.Font.SourceSansBold
+sendButton.TextSize = 18
+sendButton.Parent = frame
+
+-- Function to create random 11-character ID
+local function randomID()
+	local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	local id = ""
+	for i = 1, 11 do
+		id = id .. string.sub(chars, math.random(1, #chars), math.random(1, #chars))
+	end
+	return id
+end
+
+-- Minimize toggle
+local minimized = false
+
+minimizeButton.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	for _, obj in pairs(frame:GetChildren()) do
+		if obj ~= header then
+			obj.Visible = not minimized
+		end
+	end
+end)
+
+-- Send Message
+sendButton.MouseButton1Click:Connect(function()
+	local message = textbox.Text
+	if message ~= "" then
+		local fullMessage = message .. " | " .. randomID()
+
+		-- Send to Roblox Chat
+		ChatService:WaitForChild("SayMessageRequest"):FireServer(fullMessage, "All")
+
+		textbox.Text = "" -- Clear after sending
+	end
+end)
