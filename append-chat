@@ -1,103 +1,149 @@
---// GUI Creation
+-- CUSTOM CHAT GUI (Safe Edition With 11-Character Random Code)
+-- Inserts text into real Roblox chat on Enter key
+-- No button, textbox clears after inserting
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local StarterGui = game:GetService("StarterGui")
-local ChatService = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents")
 
--- Create ScreenGui
-local gui = Instance.new("ScreenGui")
-gui.Name = "CustomChatGui"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+-- Wait for PlayerGui
+repeat task.wait() until player:FindFirstChild("PlayerGui")
+local playerGui = player.PlayerGui
 
--- Main Frame
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 120)
-frame.Position = UDim2.new(0.05, 0, 0.5, -60)
-frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-frame.Active = true
-frame.Draggable = true
-frame.Parent = gui
+-- Remove previous GUI
+local existing = playerGui:FindFirstChild("CustomChatGUI")
+if existing then existing:Destroy() end
 
--- Header (for dragging + minimize)
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 25)
-header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-header.Parent = frame
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CustomChatGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -30, 1, 0)
-title.Position = UDim2.new(0, 5, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "Custom Chat"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 18
-title.Parent = header
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 150)
+mainFrame.Position = UDim2.new(0, 50, 0, 50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(45,45,45)
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,8)
 
-local minimizeButton = Instance.new("TextButton")
-minimizeButton.Size = UDim2.new(0, 25, 1, 0)
-minimizeButton.Position = UDim2.new(1, -25, 0, 0)
-minimizeButton.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
-minimizeButton.Text = "-"
-minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-minimizeButton.Font = Enum.Font.SourceSansBold
-minimizeButton.TextSize = 18
-minimizeButton.Parent = header
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1,0,0,30)
+titleBar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+titleBar.Parent = mainFrame
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0,8)
 
--- TextBox
-local textbox = Instance.new("TextBox")
-textbox.Size = UDim2.new(1, -20, 0, 40)
-textbox.Position = UDim2.new(0, 10, 0, 35)
-textbox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-textbox.PlaceholderText = "Type your message..."
-textbox.TextColor3 = Color3.fromRGB(255, 255, 255)
-textbox.TextSize = 18
-textbox.Font = Enum.Font.SourceSans
-textbox.Parent = frame
+local titleText = Instance.new("TextLabel")
+titleText.Size = UDim2.new(0.7,0,1,0)
+titleText.Position = UDim2.new(0,10,0,0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "Custom Chat"
+titleText.TextColor3 = Color3.new(1,1,1)
+titleText.Font = Enum.Font.Gotham
+titleText.TextSize = 14
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = titleBar
 
--- Send Button
-local sendButton = Instance.new("TextButton")
-sendButton.Size = UDim2.new(1, -20, 0, 30)
-sendButton.Position = UDim2.new(0, 10, 0, 80)
-sendButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-sendButton.Text = "Send"
-sendButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-sendButton.Font = Enum.Font.SourceSansBold
-sendButton.TextSize = 18
-sendButton.Parent = frame
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0,30,0,30)
+close.Position = UDim2.new(1,-30,0,0)
+close.BackgroundColor3 = Color3.fromRGB(200,60,60)
+close.Text = "X"
+close.TextColor3 = Color3.new(1,1,1)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 14
+close.Parent = titleBar
+Instance.new("UICorner", close).CornerRadius = UDim.new(0,8)
 
--- Function to create random 11-character ID
-local function randomID()
-	local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	local id = ""
-	for i = 1, 11 do
-		id = id .. string.sub(chars, math.random(1, #chars), math.random(1, #chars))
-	end
-	return id
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1,-20,1,-40)
+content.Position = UDim2.new(0,10,0,40)
+content.BackgroundTransparency = 1
+content.Parent = mainFrame
+
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(1,0,0,100)
+textBox.BackgroundColor3 = Color3.fromRGB(65,65,65)
+textBox.Text = ""
+textBox.PlaceholderText = "Type your message here..."
+textBox.TextColor3 = Color3.new(1,1,1)
+textBox.Font = Enum.Font.Gotham
+textBox.TextSize = 14
+textBox.ClearTextOnFocus = false
+textBox.MultiLine = false -- no new lines
+textBox.TextWrapped = true
+textBox.Parent = content
+Instance.new("UICorner", textBox).CornerRadius = UDim.new(0,6)
+
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.new(0,0,0)
+shadow.Thickness = 2
+shadow.Parent = mainFrame
+
+-------------------------------------------------------------------
+-- Generate 11-character random code
+-------------------------------------------------------------------
+local function generateRandomCode()
+    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"
+    local out = ""
+    for i = 1, 11 do
+        local index = math.random(1, #chars)
+        out = out .. chars:sub(index, index)
+    end
+    return out
 end
 
--- Minimize toggle
-local minimized = false
+-------------------------------------------------------------------
+-- Find REAL Roblox chat textbox
+-------------------------------------------------------------------
+local function findRealChatBox()
+    local core = game:GetService("CoreGui")
+    for _, obj in ipairs(core:GetDescendants()) do
+        if obj:IsA("TextBox") and obj.Visible and obj.PlaceholderText ~= "" then
+            return obj
+        end
+    end
+    return nil
+end
 
-minimizeButton.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	for _, obj in pairs(frame:GetChildren()) do
-		if obj ~= header then
-			obj.Visible = not minimized
-		end
-	end
+-------------------------------------------------------------------
+-- Insert formatted message into real chat textbox
+-------------------------------------------------------------------
+local function insertIntoRealChat()
+    local msg = textBox.Text
+    if msg == "" then return end
+
+    local code = generateRandomCode()
+    local formatted = msg .. " | [" .. code .. "]"
+
+    local realChat = findRealChatBox()
+    if realChat then
+        realChat.Text = formatted
+        realChat:CaptureFocus()
+        print("Inserted into chat: " .. formatted)
+        textBox.Text = "" -- clear after inserting
+    else
+        warn("Could not find real chat textbox.")
+    end
+end
+
+-------------------------------------------------------------------
+-- Press Enter to send
+-------------------------------------------------------------------
+textBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        task.defer(insertIntoRealChat) -- defer ensures TextBox.Text is fully updated
+    end
 end)
 
--- Send Message
-sendButton.MouseButton1Click:Connect(function()
-	local message = textbox.Text
-	if message ~= "" then
-		local fullMessage = message .. " | " .. randomID()
-
-		-- Send to Roblox Chat
-		ChatService:WaitForChild("SayMessageRequest"):FireServer(fullMessage, "All")
-
-		textbox.Text = "" -- Clear after sending
-	end
+-------------------------------------------------------------------
+-- Close GUI
+-------------------------------------------------------------------
+close.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
 end)
+
+print("Custom Chat GUI Loaded (Format Mode)")
+print("Message will be inserted as: <text> | [11-char code]")
+print("Press Enter to insert into chat.")
