@@ -42,7 +42,7 @@ scroll.BorderSizePixel = 0
 scroll.CanvasSize = UDim2.new(0,0,0,0)
 scroll.Parent = frame
 
--- Buttons
+-- TP Me → Player Button
 local tpMe = Instance.new("TextButton")
 tpMe.Size = UDim2.new(1, -10, 0, 25)
 tpMe.Position = UDim2.new(0, 5, 0, 140)
@@ -51,23 +51,29 @@ tpMe.BackgroundColor3 = Color3.fromRGB(50,50,50)
 tpMe.TextColor3 = Color3.new(1,1,1)
 tpMe.Parent = frame
 
+-- TP Loop Button
+local tpLoop = Instance.new("TextButton")
+tpLoop.Size = UDim2.new(1, -10, 0, 25)
+tpLoop.Position = UDim2.new(0, 5, 0, 170)
+tpLoop.Text = "Loop TP → Player"
+tpLoop.BackgroundColor3 = Color3.fromRGB(50,50,50)
+tpLoop.TextColor3 = Color3.new(1,1,1)
+tpLoop.Parent = frame
+
 -- Selected player
 local selectedPlayer = nil
 local selectedButton = nil
+
+-- Loop state
+local looping = false
+local active = true -- becomes false on death/respawn
 
 -- Helper
 local function getHRP(plr)
     return plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
 end
 
-local function getModel(part)
-    while part and not part:IsA("Model") do
-        part = part.Parent
-    end
-    return part
-end
-
--- Refresh list (FIXED selection)
+-- Refresh list
 local function refresh()
     scroll:ClearAllChildren()
     
@@ -83,11 +89,9 @@ local function refresh()
             btn.Parent = scroll
             
             btn.MouseButton1Click:Connect(function()
-                -- reset previous
                 if selectedButton then
                     selectedButton.BackgroundColor3 = Color3.fromRGB(60,60,60)
                 end
-                
                 selectedPlayer = plr
                 selectedButton = btn
                 btn.BackgroundColor3 = Color3.fromRGB(0,120,255)
@@ -100,7 +104,64 @@ local function refresh()
     scroll.CanvasSize = UDim2.new(0,0,0,y)
 end
 
--- 🔹 TP Me → Player
+-- Single TP
+tpMe.MouseButton1Click:Connect(function()
+    if not active then return end
+    if selectedPlayer then
+        local myHRP = getHRP(player)
+        local targetHRP = getHRP(selectedPlayer)
+        if myHRP and targetHRP then
+            myHRP.CFrame = targetHRP.CFrame
+        end
+    end
+end)
+
+-- Loop TP
+tpLoop.MouseButton1Click:Connect(function()
+    if not active then return end
+    if not selectedPlayer then return end
+    looping = not looping
+    tpLoop.BackgroundColor3 = looping and Color3.fromRGB(0,120,255) or Color3.fromRGB(50,50,50)
+    
+    if looping then
+        spawn(function()
+            while looping and active do
+                if selectedPlayer then
+                    local myHRP = getHRP(player)
+                    local targetHRP = getHRP(selectedPlayer)
+                    if myHRP and targetHRP then
+                        myHRP.CFrame = targetHRP.CFrame
+                    end
+                end
+                wait(0.1)
+            end
+        end)
+    end
+end)
+
+-- Minimize
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    scroll.Visible = not minimized
+    tpMe.Visible = not minimized
+    tpLoop.Visible = not minimized
+    frame.Size = minimized and UDim2.new(0,190,0,20) or UDim2.new(0,190,0,210)
+    minimize.Text = minimized and "+" or "-"
+end)
+
+-- Stop everything on death/respawn
+player.CharacterAdded:Connect(function()
+    active = false
+    looping = false
+    tpLoop.BackgroundColor3 = Color3.fromRGB(50,50,50)
+end)
+
+-- Player updates
+game.Players.PlayerAdded:Connect(refresh)
+game.Players.PlayerRemoving:Connect(refresh)
+
+refresh()-- 🔹 TP Me → Player
 tpMe.MouseButton1Click:Connect(function()
     if selectedPlayer then
         local myHRP = getHRP(player)
