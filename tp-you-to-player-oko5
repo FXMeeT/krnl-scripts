@@ -1,0 +1,122 @@
+-- Player
+local player = game.Players.LocalPlayer
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "PlayerTPGUI"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 180, 0, 200)
+frame.Position = UDim2.new(0, 200, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 20)
+title.Position = UDim2.new(0, 5, 0, 0)
+title.Text = "Players"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.TextSize = 14
+title.Parent = frame
+
+-- Minimize
+local minimize = Instance.new("TextButton")
+minimize.Size = UDim2.new(0, 20, 0, 20)
+minimize.Position = UDim2.new(1, -20, 0, 0)
+minimize.Text = "-"
+minimize.TextColor3 = Color3.new(1,1,1)
+minimize.BackgroundColor3 = Color3.fromRGB(50,50,50)
+minimize.Parent = frame
+
+-- Scroll frame for players
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -10, 0, 120)
+scroll.Position = UDim2.new(0, 5, 0, 25)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.BackgroundColor3 = Color3.fromRGB(40,40,40)
+scroll.BorderSizePixel = 0
+scroll.Parent = frame
+
+-- TP Button
+local tpBtn = Instance.new("TextButton")
+tpBtn.Size = UDim2.new(1, -10, 0, 25)
+tpBtn.Position = UDim2.new(0, 5, 0, 150)
+tpBtn.Text = "TP to Player"
+tpBtn.TextColor3 = Color3.new(1,1,1)
+tpBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+tpBtn.TextSize = 12
+tpBtn.Parent = frame
+
+-- Selected player
+local selectedPlayer = nil
+
+-- Function to refresh player list
+local function refreshList()
+    scroll:ClearAllChildren()
+    
+    local y = 0
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= player then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -5, 0, 25)
+            btn.Position = UDim2.new(0, 0, 0, y)
+            btn.Text = plr.Name
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+            btn.TextSize = 12
+            btn.Parent = scroll
+            
+            btn.MouseButton1Click:Connect(function()
+                selectedPlayer = plr
+                
+                -- Highlight selection
+                for _, child in pairs(scroll:GetChildren()) do
+                    if child:IsA("TextButton") then
+                        child.BackgroundColor3 = Color3.fromRGB(60,60,60)
+                    end
+                end
+                btn.BackgroundColor3 = Color3.fromRGB(0,120,255)
+            end)
+            
+            y = y + 30
+        end
+    end
+    
+    scroll.CanvasSize = UDim2.new(0,0,0,y)
+end
+
+-- Teleport
+tpBtn.MouseButton1Click:Connect(function()
+    if selectedPlayer then
+        local char = player.Character
+        local targetChar = selectedPlayer.Character
+        
+        if char and targetChar and targetChar:FindFirstChild("HumanoidRootPart") then
+            char:MoveTo(targetChar.HumanoidRootPart.Position)
+        end
+    end
+end)
+
+-- Minimize logic
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    scroll.Visible = not minimized
+    tpBtn.Visible = not minimized
+    frame.Size = minimized and UDim2.new(0, 180, 0, 20) or UDim2.new(0, 180, 0, 200)
+    minimize.Text = minimized and "+" or "-"
+end)
+
+-- Update list when players join/leave
+game.Players.PlayerAdded:Connect(refreshList)
+game.Players.PlayerRemoving:Connect(refreshList)
+
+-- Initial load
+refreshList()
