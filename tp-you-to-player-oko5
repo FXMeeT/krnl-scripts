@@ -129,23 +129,4 @@ end)
 game.Players.PlayerAdded:Connect(refresh)
 game.Players.PlayerRemoving:Connect(refresh)
 
-refresh()         end
-    end
-end)
-
--- Minimize logic
-local minimized = false
-minimize.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    scroll.Visible = not minimized
-    tpBtn.Visible = not minimized
-    frame.Size = minimized and UDim2.new(0, 180, 0, 20) or UDim2.new(0, 180, 0, 200)
-    minimize.Text = minimized and "+" or "-"
-end)
-
--- Update list when players join/leave
-game.Players.PlayerAdded:Connect(refreshList)
-game.Players.PlayerRemoving:Connect(refreshList)
-
--- Initial load
-refreshList()
+refresh() 
