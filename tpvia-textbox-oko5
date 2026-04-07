@@ -5,7 +5,7 @@ gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- Main Frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 180, 0, 110)
+frame.Size = UDim2.new(0, 180, 0, 130)
 frame.Position = UDim2.new(0, 20, 0, 20)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -73,26 +73,48 @@ input.BackgroundColor3 = Color3.fromRGB(40,40,40)
 input.TextSize = 12
 input.Parent = frame
 
--- Minimize Logic
+-- Loop TP Button
+local loopBtn = Instance.new("TextButton")
+loopBtn.Size = UDim2.new(1, -10, 0, 20)
+loopBtn.Position = UDim2.new(0, 5, 0, 95)
+loopBtn.Text = "Loop TP: OFF"
+loopBtn.TextColor3 = Color3.new(1,1,1)
+loopBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+loopBtn.TextSize = 12
+loopBtn.Parent = frame
+
+-- Variables
 local minimized = false
+local player = game.Players.LocalPlayer
+local loopTP = false
+local targetPos = nil
+
+-- Minimize Logic
 minimize.MouseButton1Click:Connect(function()
     minimized = not minimized
     posLabel.Visible = not minimized
     copyBtn.Visible = not minimized
     tpBtn.Visible = not minimized
     input.Visible = not minimized
-    frame.Size = minimized and UDim2.new(0, 180, 0, 20) or UDim2.new(0, 180, 0, 110)
+    loopBtn.Visible = not minimized
+    frame.Size = minimized and UDim2.new(0, 180, 0, 20) or UDim2.new(0, 180, 0, 130)
     minimize.Text = minimized and "+" or "-"
 end)
 
--- Update Position
-local player = game.Players.LocalPlayer
-
+-- Update Position + Loop TP
 game:GetService("RunService").RenderStepped:Connect(function()
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
-        local pos = char.HumanoidRootPart.Position
+        local hrp = char.HumanoidRootPart
+        
+        -- Update position display
+        local pos = hrp.Position
         posLabel.Text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
+        
+        -- Loop TP
+        if loopTP and targetPos then
+            hrp.CFrame = CFrame.new(targetPos)
+        end
     end
 end)
 
@@ -101,6 +123,46 @@ copyBtn.MouseButton1Click:Connect(function()
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         local pos = char.HumanoidRootPart.Position
+        local text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
+
+        if setclipboard then
+            setclipboard(text)
+        end
+    end
+end)
+
+-- One-time Teleport
+tpBtn.MouseButton1Click:Connect(function()
+    local text = input.Text
+    local x, y, z = text:match("%[?%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*%]?")
+
+    if x and y and z then
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
+        end
+    end
+end)
+
+-- Loop TP Toggle
+loopBtn.MouseButton1Click:Connect(function()
+    loopTP = not loopTP
+
+    if loopTP then
+        local text = input.Text
+        local x, y, z = text:match("%[?%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*%]?")
+
+        if x and y and z then
+            targetPos = Vector3.new(tonumber(x), tonumber(y), tonumber(z))
+            loopBtn.Text = "Loop TP: ON"
+        else
+            loopTP = false
+            loopBtn.Text = "Loop TP: OFF"
+        end
+    else
+        loopBtn.Text = "Loop TP: OFF"
+    end
+end)        local pos = char.HumanoidRootPart.Position
         local text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
 
         if setclipboard then
