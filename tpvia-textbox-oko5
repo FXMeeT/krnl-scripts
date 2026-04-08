@@ -1,7 +1,12 @@
+-- Wait for player
+repeat task.wait() until game.Players.LocalPlayer
+
+local player = game.Players.LocalPlayer
+
 -- Create ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "PositionGUI"
-gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Main Frame
 local frame = Instance.new("Frame")
@@ -52,7 +57,7 @@ copyBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
 copyBtn.TextSize = 12
 copyBtn.Parent = frame
 
--- Teleport Button
+-- TP Button
 local tpBtn = Instance.new("TextButton")
 tpBtn.Size = UDim2.new(0.48, -5, 0, 20)
 tpBtn.Position = UDim2.new(0.52, 0, 0, 45)
@@ -85,66 +90,72 @@ loopBtn.Parent = frame
 
 -- Variables
 local minimized = false
-local player = game.Players.LocalPlayer
 local loopTP = false
 local targetPos = nil
 
--- Minimize Logic
+-- Minimize
 minimize.MouseButton1Click:Connect(function()
     minimized = not minimized
+    
     posLabel.Visible = not minimized
     copyBtn.Visible = not minimized
     tpBtn.Visible = not minimized
     input.Visible = not minimized
     loopBtn.Visible = not minimized
+
     frame.Size = minimized and UDim2.new(0, 180, 0, 20) or UDim2.new(0, 180, 0, 130)
     minimize.Text = minimized and "+" or "-"
 end)
 
--- Update Position + Loop TP
+-- Update position + loop TP
 game:GetService("RunService").RenderStepped:Connect(function()
     local char = player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local hrp = char.HumanoidRootPart
-        
-        -- Update position display
-        local pos = hrp.Position
-        posLabel.Text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
-        
-        -- Loop TP
-        if loopTP and targetPos then
-            hrp.CFrame = CFrame.new(targetPos)
-        end
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local pos = hrp.Position
+    posLabel.Text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
+
+    if loopTP and targetPos then
+        hrp.CFrame = CFrame.new(targetPos)
     end
 end)
 
--- Copy to Clipboard
+-- Copy
 copyBtn.MouseButton1Click:Connect(function()
     local char = player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local pos = char.HumanoidRootPart.Position
-        local text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
+    if not char then return end
 
-        if setclipboard then
-            setclipboard(text)
-        end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local pos = hrp.Position
+    local text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
+
+    if setclipboard then
+        setclipboard(text)
     end
 end)
 
--- One-time Teleport
+-- Teleport once
 tpBtn.MouseButton1Click:Connect(function()
     local text = input.Text
     local x, y, z = text:match("%[?%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*%]?")
 
     if x and y and z then
         local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
-        end
+        if not char then return end
+
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        hrp.CFrame = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
     end
 end)
 
--- Loop TP Toggle
+-- Loop TP toggle
 loopBtn.MouseButton1Click:Connect(function()
     loopTP = not loopTP
 
@@ -161,27 +172,5 @@ loopBtn.MouseButton1Click:Connect(function()
         end
     else
         loopBtn.Text = "Loop TP: OFF"
-    end
-end)        local pos = char.HumanoidRootPart.Position
-        local text = string.format("[%.2f, %.2f, %.2f]", pos.X, pos.Y, pos.Z)
-
-        if setclipboard then
-            setclipboard(text)
-        end
-    end
-end)
-
--- Teleport Function
-tpBtn.MouseButton1Click:Connect(function()
-    local text = input.Text
-    
-    -- Extract numbers from [x, y, z]
-    local x, y, z = text:match("%[?%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*%]?")
-    
-    if x and y and z then
-        local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = CFrame.new(tonumber(x), tonumber(y), tonumber(z))
-        end
     end
 end)
