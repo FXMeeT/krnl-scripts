@@ -1,0 +1,139 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+-- ================= CHARACTER =================
+local character = player.Character or player.CharacterAdded:Wait()
+local root = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+humanoid.WalkSpeed = 0
+humanoid.JumpPower = 0
+humanoid.AutoRotate = false
+
+-- ================= GUI =================
+local gui = Instance.new("ScreenGui")
+gui.Name = "ForceAccelGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 240, 0, 200)
+frame.Position = UDim2.new(0.5, -120, 0.8, -100)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.Parent = gui
+
+-- ================= BUILT-IN DRAG =================
+local drag = Instance.new("UIDragDetector")
+drag.Parent = frame
+drag.DragStyle = Enum.UIDragDetectorDragStyle.TranslateView -- smooth movement
+drag.ResponseStyle = Enum.UIDragDetectorResponseStyle.Scale
+
+-- ================= INPUTS =================
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.new(1, -20, 0, 40)
+speedBox.Position = UDim2.new(0, 10, 0, 10)
+speedBox.PlaceholderText = "Target Speed"
+speedBox.Text = ""
+speedBox.TextColor3 = Color3.fromRGB(255,255,255)
+speedBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+speedBox.Parent = frame
+
+local angleBox = Instance.new("TextBox")
+angleBox.Size = UDim2.new(1, -20, 0, 40)
+angleBox.Position = UDim2.new(0, 10, 0, 60)
+angleBox.PlaceholderText = "Direction (-360 to 360)"
+angleBox.Text = "0"
+angleBox.TextColor3 = Color3.fromRGB(255,255,255)
+angleBox.BackgroundColor3 = Color3.fromRGB(45,45,45)
+angleBox.Parent = frame
+
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(1, -20, 0, 40)
+toggle.Position = UDim2.new(0, 10, 0, 110)
+toggle.Text = "OFF"
+toggle.BackgroundColor3 = Color3.fromRGB(170,60,60)
+toggle.TextColor3 = Color3.fromRGB(255,255,255)
+toggle.Parent = frame
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, -20, 0, 30)
+label.Position = UDim2.new(0, 10, 0, 155)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.fromRGB(255,255,255)
+label.Text = "Override Disabled"
+label.Parent = frame
+
+-- ================= VARIABLES =================
+local enabled = false
+local targetSpeed = 0
+local currentSpeed = 0
+local acceleration = 3
+local angle = 0
+
+-- speed input
+speedBox.FocusLost:Connect(function()
+	local v = tonumber(speedBox.Text)
+	if v then
+		targetSpeed = v
+	end
+end)
+
+-- angle input
+angleBox.FocusLost:Connect(function()
+	local v = tonumber(angleBox.Text)
+	if v then
+		angle = math.clamp(v, -360, 360)
+	end
+end)
+
+-- toggle
+toggle.MouseButton1Click:Connect(function()
+	enabled = not enabled
+
+	if enabled then
+		toggle.Text = "ON"
+		toggle.BackgroundColor3 = Color3.fromRGB(60,170,60)
+		label.Text = "Override ACTIVE"
+	else
+		toggle.Text = "OFF"
+		toggle.BackgroundColor3 = Color3.fromRGB(170,60,60)
+		label.Text = "Override Disabled"
+		currentSpeed = 0
+	end
+end)
+
+-- ================= FORCE ACCELERATION =================
+RunService.RenderStepped:Connect(function()
+	if not enabled or not root then return end
+
+	local rad = math.rad(angle)
+	local dir = Vector3.new(math.sin(rad), 0, math.cos(rad))
+
+	if currentSpeed < targetSpeed then
+		currentSpeed = math.min(currentSpeed + acceleration, targetSpeed)
+	else
+		currentSpeed = targetSpeed
+	end
+
+	root.AssemblyLinearVelocity = Vector3.new(
+		dir.X * currentSpeed,
+		root.AssemblyLinearVelocity.Y,
+		dir.Z * currentSpeed
+	)
+end)
+
+-- ================= RESET =================
+player.CharacterAdded:Connect(function(char)
+	character = char
+	root = char:WaitForChild("HumanoidRootPart")
+	humanoid = char:WaitForChild("Humanoid")
+
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid.AutoRotate = false
+
+	currentSpeed = 0
+	enabled = false
+end)
