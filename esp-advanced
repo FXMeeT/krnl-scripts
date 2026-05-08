@@ -1,0 +1,334 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- ================= STATE =================
+local enabled = true
+local running = true
+
+local settings = {
+	AGL = true,
+	SPEED = true,
+	HEALTH = true,
+	POS = true,
+	DIR = true,
+	BORDER = true,
+}
+
+local objects = {}
+
+-- ================= CONTROLS =================
+local textScaleInput = -4
+local wireScaleInput = 1
+local wireBoldInput = 1
+
+local function clampWireSize(v)
+	return math.max(1, v)
+end
+
+local function getTextScale()
+	return math.clamp(1 + textScaleInput * 0.1, 0.25, 4)
+end
+
+local function getWireScale()
+	return math.max(1, wireScaleInput)
+end
+
+local function getWireBold()
+	return math.max(1, wireBoldInput)
+end
+
+-- ================= COLORS =================
+local function getHealthColor(p)
+	if p > 0.6 then
+		return Color3.fromRGB(0,255,0)
+	elseif p > 0.3 then
+		return Color3.fromRGB(255,255,0)
+	else
+		return Color3.fromRGB(255,0,0)
+	end
+end
+
+local COLOR_NAME = Color3.fromRGB(255,255,0)
+local COLOR_SPEED = Color3.fromRGB(0,200,255)
+local COLOR_DIR = Color3.fromRGB(180,180,255)
+local COLOR_AGL = Color3.fromRGB(255,150,0)
+local COLOR_POS = Color3.fromRGB(150,255,150)
+
+-- ================= GUI =================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PlayerESP_GUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 200, 0, 220)
+main.Position = UDim2.new(0, 20, 0, 120)
+main.BackgroundColor3 = Color3.fromRGB(25,25,25)
+main.Parent = screenGui
+main.Active = true
+main.Draggable = true
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 25)
+title.Text = "PLAYER ESP"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.BackgroundTransparency = 1
+title.Parent = main
+
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 25, 0, 25)
+minBtn.Position = UDim2.new(1, -55, 0, 0)
+minBtn.Text = "-"
+minBtn.Parent = main
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 25, 0, 25)
+closeBtn.Position = UDim2.new(1, -28, 0, 0)
+closeBtn.Text = "X"
+closeBtn.Parent = main
+
+-- ================= SCROLL AREA =================
+local content = Instance.new("ScrollingFrame")
+content.Size = UDim2.new(1, 0, 1, -25)
+content.Position = UDim2.new(0, 0, 0, 25)
+content.CanvasSize = UDim2.new(0, 0, 0, 400)
+content.ScrollBarThickness = 4
+content.BackgroundTransparency = 1
+content.Parent = main
+
+local layout = Instance.new("UIListLayout")
+layout.Parent = content
+
+-- ================= TOGGLES =================
+local function makeToggle(name)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -10, 0, 25)
+	btn.BackgroundColor3 = Color3.fromRGB(35,35,35)
+	btn.Parent = content
+
+	local function update()
+		btn.Text = name .. ": " .. (settings[name] and "ON" or "OFF")
+	end
+
+	update()
+
+	btn.MouseButton1Click:Connect(function()
+		settings[name] = not settings[name]
+		update()
+	end)
+
+	return update
+end
+
+makeToggle("AGL")
+makeToggle("SPEED")
+makeToggle("HEALTH")
+makeToggle("POS")
+makeToggle("DIR")
+makeToggle("BORDER")
+
+-- ================= GLOBAL =================
+local globalBtn = Instance.new("TextButton")
+globalBtn.Size = UDim2.new(1, -10, 0, 25)
+globalBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+globalBtn.Text = "GLOBAL: ON"
+globalBtn.Parent = content
+
+globalBtn.MouseButton1Click:Connect(function()
+	enabled = not enabled
+	globalBtn.Text = "GLOBAL: " .. (enabled and "ON" or "OFF")
+end)
+
+-- ================= INPUTS =================
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(1, -10, 0, 25)
+textBox.PlaceholderText = "Text Scale (0 = normal)"
+textBox.Text = "0"
+textBox.Parent = content
+
+textBox.FocusLost:Connect(function()
+	local v = tonumber(textBox.Text)
+	if v then textScaleInput = v else textBox.Text = "0" end
+end)
+
+local wireBox = Instance.new("TextBox")
+wireBox.Size = UDim2.new(1, -10, 0, 25)
+wireBox.PlaceholderText = "Wire Size (min 1)"
+wireBox.Text = "1"
+wireBox.Parent = content
+
+wireBox.FocusLost:Connect(function()
+	local v = tonumber(wireBox.Text)
+	if v then wireScaleInput = math.max(1, v) else wireBox.Text = "1" end
+end)
+
+local boldBox = Instance.new("TextBox")
+boldBox.Size = UDim2.new(1, -10, 0, 25)
+boldBox.PlaceholderText = "Wire Boldness (min 1)"
+boldBox.Text = "1"
+boldBox.Parent = content
+
+boldBox.FocusLost:Connect(function()
+	local v = tonumber(boldBox.Text)
+	if v then wireBoldInput = math.max(1, v) else boldBox.Text = "1" end
+end)
+
+-- ================= MINIMIZER FIX =================
+local minimized = false
+local fullSize = main.Size
+
+minBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+
+	if minimized then
+		content.Visible = false
+		main.Size = UDim2.new(0, 200, 0, 25)
+	else
+		content.Visible = true
+		main.Size = fullSize
+	end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	running = false
+	screenGui:Destroy()
+	for _, d in pairs(objects) do
+		if d.Box then d.Box:Destroy() end
+		if d.Gui then d.Gui:Destroy() end
+	end
+end)
+
+-- ================= PLAYER CLEANUP =================
+Players.PlayerRemoving:Connect(function(plr)
+	if objects[plr] then
+		if objects[plr].Box then objects[plr].Box:Destroy() end
+		if objects[plr].Gui then objects[plr].Gui:Destroy() end
+		objects[plr] = nil
+	end
+end)
+
+-- ================= CREATE =================
+local function create(plr)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 200, 0, 120)
+	bb.AlwaysOnTop = true
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1,0,1,0)
+	frame.BackgroundTransparency = 1
+	frame.Parent = bb
+
+	local function mk(y, color)
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.new(1,0,0,18)
+		t.Position = UDim2.new(0,0,0,y)
+		t.BackgroundTransparency = 1
+		t.TextColor3 = color
+		t.TextSize = 14
+		t.Parent = frame
+		return t
+	end
+
+	local ui = {
+		Name = mk(0, COLOR_NAME),
+		Health = mk(18, Color3.new(1,1,1)),
+		Speed = mk(36, COLOR_SPEED),
+		Dir = mk(54, COLOR_DIR),
+		AGL = mk(72, COLOR_AGL),
+		Pos = mk(90, COLOR_POS),
+	}
+
+	-- ================= WIREFRAME (FIXED) =================
+	local box = Instance.new("SelectionBox")
+	box.LineThickness = 0.02
+	box.SurfaceTransparency = 1
+	box.Color3 = Color3.fromRGB(255,255,255)
+	box.Parent = workspace
+
+	objects[plr] = {
+		Gui = bb,
+		Labels = ui,
+		Box = box,
+		WirePart = nil
+	}
+
+	bb.Parent = workspace
+end
+
+-- ================= UPDATE =================
+RunService.RenderStepped:Connect(function()
+	if not running or not enabled then return end
+
+	local textScale = getTextScale()
+	local wireScale = getWireScale()
+	local bold = getWireBold()
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+
+			local char = plr.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+			if not hrp or not hum then continue end
+			if not objects[plr] then create(plr) end
+
+			local obj = objects[plr]
+
+			obj.Gui.Adornee = hrp
+			obj.Gui.Enabled = true
+
+			-- TEXT SCALE
+			for _, lbl in pairs(obj.Labels) do
+				lbl.TextSize = math.floor(14 * textScale)
+			end
+
+			local vel = hrp.AssemblyLinearVelocity.Magnitude
+			local dir = math.deg(math.atan2(hrp.CFrame.LookVector.X, hrp.CFrame.LookVector.Z))
+
+			obj.Labels.Name.Text = plr.Name
+			obj.Labels.Health.Text = settings.HEALTH and ("HP: " .. math.floor(hum.Health)) or ""
+			obj.Labels.Health.TextColor3 = getHealthColor(hum.Health / hum.MaxHealth)
+
+			obj.Labels.Speed.Text = settings.SPEED and ("SPD: " .. math.floor(vel)) or ""
+			obj.Labels.Dir.Text = settings.DIR and ("DIR: " .. math.floor(dir)) or ""
+			obj.Labels.AGL.Text = settings.AGL and ("AGL: " .. math.floor(hrp.Position.Y)) or ""
+
+			obj.Labels.Pos.Text = settings.POS and
+				string.format("POS: %d,%d,%d",
+					math.floor(hrp.Position.X),
+					math.floor(hrp.Position.Y),
+					math.floor(hrp.Position.Z)
+				) or ""
+
+			-- ================= WIREFRAME SIZE + BOLDNESS =================
+			local box = obj.Box
+
+			if settings.BORDER then
+				local cf, size = char:GetBoundingBox()
+
+				if not obj.WirePart then
+					local p = Instance.new("Part")
+					p.Anchored = true
+					p.Transparency = 1
+					p.CanCollide = false
+					p.Parent = workspace
+					obj.WirePart = p
+				end
+
+				local wp = obj.WirePart
+				wp.Size = size * wireScale
+				wp.CFrame = cf
+
+				box.Adornee = wp
+				box.Visible = true
+				box.LineThickness = 0.02 * bold
+			else
+				box.Visible = false
+			end
+		end
+	end
+end)
