@@ -5,105 +5,252 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 -- GUI Setup
-local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+local gui = Instance.new("ScreenGui")
 gui.Name = "TrackerUI"
 gui.ResetOnSpawn = false
+gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 240, 0, 380)
+frame.Size = UDim2.new(0, 240, 0, 500)
 frame.Position = UDim2.new(0, 100, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.Active = true
 frame.Draggable = true
 frame.Parent = gui
 
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+titleBar.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 5, 0, 0)
 title.Text = "Face Target Tracker"
 title.TextColor3 = Color3.new(1, 1, 1)
-title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
 
-local toggle = Instance.new("TextButton", frame)
+-- Minimize Button
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 25, 0, 25)
+minimizeButton.Position = UDim2.new(1, -55, 0, 2)
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.new(1, 1, 1)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+minimizeButton.Font = Enum.Font.SourceSansBold
+minimizeButton.TextSize = 18
+minimizeButton.Parent = titleBar
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -28, 0, 2)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.BackgroundColor3 = Color3.fromRGB(120, 50, 50)
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 16
+closeButton.Parent = titleBar
+
+-- Main Container
+local container = Instance.new("Frame")
+container.Size = UDim2.new(1, 0, 1, -30)
+container.Position = UDim2.new(0, 0, 0, 30)
+container.BackgroundTransparency = 1
+container.Parent = frame
+
+local toggle = Instance.new("TextButton")
 toggle.Size = UDim2.new(1, -20, 0, 30)
-toggle.Position = UDim2.new(0, 10, 0, 40)
+toggle.Position = UDim2.new(0, 10, 0, 10)
 toggle.Text = "Deactivate"
 toggle.TextColor3 = Color3.new(1, 1, 1)
 toggle.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 toggle.Font = Enum.Font.SourceSans
 toggle.TextSize = 16
+toggle.Parent = container
 
-local partToggle = Instance.new("TextButton", frame)
+local partToggle = Instance.new("TextButton")
 partToggle.Size = UDim2.new(1, -20, 0, 30)
-partToggle.Position = UDim2.new(0, 10, 0, 80)
+partToggle.Position = UDim2.new(0, 10, 0, 50)
 partToggle.Text = "Face: Head"
 partToggle.TextColor3 = Color3.new(1, 1, 1)
 partToggle.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 partToggle.Font = Enum.Font.SourceSans
 partToggle.TextSize = 16
+partToggle.Parent = container
 
-local modeToggle = Instance.new("TextButton", frame)
+local modeToggle = Instance.new("TextButton")
 modeToggle.Size = UDim2.new(1, -20, 0, 30)
-modeToggle.Position = UDim2.new(0, 10, 0, 120)
+modeToggle.Position = UDim2.new(0, 10, 0, 90)
 modeToggle.Text = "Mode: Body + Camera"
 modeToggle.TextColor3 = Color3.new(1, 1, 1)
 modeToggle.BackgroundColor3 = Color3.fromRGB(100, 120, 100)
 modeToggle.Font = Enum.Font.SourceSans
 modeToggle.TextSize = 16
+modeToggle.Parent = container
 
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -20, 1, -170)
-scroll.Position = UDim2.new(0, 10, 0, 170)
+-- Y Corrector
+local yLabel = Instance.new("TextLabel")
+yLabel.Size = UDim2.new(1, -20, 0, 20)
+yLabel.Position = UDim2.new(0, 10, 0, 135)
+yLabel.Text = "Y Corrector"
+yLabel.TextColor3 = Color3.new(1, 1, 1)
+yLabel.BackgroundTransparency = 1
+yLabel.Font = Enum.Font.SourceSansBold
+yLabel.TextSize = 16
+yLabel.TextXAlignment = Enum.TextXAlignment.Left
+yLabel.Parent = container
+
+local yInput = Instance.new("TextBox")
+yInput.Size = UDim2.new(1, -20, 0, 30)
+yInput.Position = UDim2.new(0, 10, 0, 160)
+yInput.Text = "0"
+yInput.PlaceholderText = "Enter Y Offset"
+yInput.TextColor3 = Color3.new(1, 1, 1)
+yInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+yInput.Font = Enum.Font.SourceSans
+yInput.TextSize = 16
+yInput.ClearTextOnFocus = false
+yInput.Parent = container
+
+-- X Corrector
+local xLabel = Instance.new("TextLabel")
+xLabel.Size = UDim2.new(1, -20, 0, 20)
+xLabel.Position = UDim2.new(0, 10, 0, 200)
+xLabel.Text = "X Corrector"
+xLabel.TextColor3 = Color3.new(1, 1, 1)
+xLabel.BackgroundTransparency = 1
+xLabel.Font = Enum.Font.SourceSansBold
+xLabel.TextSize = 16
+xLabel.TextXAlignment = Enum.TextXAlignment.Left
+xLabel.Parent = container
+
+local xInput = Instance.new("TextBox")
+xInput.Size = UDim2.new(1, -20, 0, 30)
+xInput.Position = UDim2.new(0, 10, 0, 225)
+xInput.Text = "0"
+xInput.PlaceholderText = "Enter X Offset"
+xInput.TextColor3 = Color3.new(1, 1, 1)
+xInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+xInput.Font = Enum.Font.SourceSans
+xInput.TextSize = 16
+xInput.ClearTextOnFocus = false
+xInput.Parent = container
+
+-- Player List
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -20, 1, -270)
+scroll.Position = UDim2.new(0, 10, 0, 265)
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 scroll.ScrollBarThickness = 4
 scroll.BorderSizePixel = 0
+scroll.Parent = container
 
 -- Variables
 local selectedPlayer = nil
 local tracking = true
 local facePart = "Head"
-local followMode = "Body + Camera" -- Options: "Body Only", "Camera Only", "Body + Camera"
+local followMode = "Body + Camera"
+
+local xCorrector = 0
+local yCorrector = 0
+
+local minimized = false
+local originalSize = frame.Size
+
+-- Minimize Logic
+minimizeButton.MouseButton1Click:Connect(function()
+	minimized = not minimized
+
+	if minimized then
+		container.Visible = false
+		frame.Size = UDim2.new(0, 240, 0, 30)
+		minimizeButton.Text = "+"
+	else
+		container.Visible = true
+		frame.Size = originalSize
+		minimizeButton.Text = "-"
+	end
+end)
+
+-- Close Logic
+closeButton.MouseButton1Click:Connect(function()
+	gui:Destroy()
+end)
+
+-- Update correctors
+local function updateCorrectors()
+	xCorrector = tonumber(xInput.Text) or 0
+	yCorrector = tonumber(yInput.Text) or 0
+end
+
+xInput.FocusLost:Connect(updateCorrectors)
+yInput.FocusLost:Connect(updateCorrectors)
 
 -- Refresh player list
 local function refreshList()
 	scroll:ClearAllChildren()
-	local y = 0
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 2)
+	layout.Parent = scroll
+
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer then
-			local button = Instance.new("TextButton", scroll)
-			button.Size = UDim2.new(1, 0, 0, 30)
-			button.Position = UDim2.new(0, 0, 0, y)
+			local button = Instance.new("TextButton")
+			button.Size = UDim2.new(1, -4, 0, 30)
 			button.Text = player.Name
 			button.TextColor3 = Color3.new(1, 1, 1)
 			button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 			button.Font = Enum.Font.SourceSans
 			button.TextSize = 14
+			button.Parent = scroll
+
 			button.MouseButton1Click:Connect(function()
 				selectedPlayer = player
 			end)
-			y += 32
 		end
 	end
-	scroll.CanvasSize = UDim2.new(0, 0, 0, y)
+
+	task.wait()
+
+	scroll.CanvasSize = UDim2.new(
+		0,
+		0,
+		0,
+		layout.AbsoluteContentSize.Y + 5
+	)
 end
 
 refreshList()
+
 Players.PlayerAdded:Connect(refreshList)
-Players.PlayerRemoving:Connect(function(p)
-	if selectedPlayer == p then selectedPlayer = nil end
+
+Players.PlayerRemoving:Connect(function(player)
+	if selectedPlayer == player then
+		selectedPlayer = nil
+	end
 	refreshList()
 end)
 
--- Button actions
 toggle.MouseButton1Click:Connect(function()
 	tracking = not tracking
 	toggle.Text = tracking and "Deactivate" or "Activate"
 end)
 
 partToggle.MouseButton1Click:Connect(function()
-	facePart = (facePart == "Head") and "HumanoidRootPart" or "Head"
+	if facePart == "Head" then
+		facePart = "HumanoidRootPart"
+	else
+		facePart = "Head"
+	end
+
 	partToggle.Text = "Face: " .. facePart
 end)
 
@@ -115,67 +262,110 @@ modeToggle.MouseButton1Click:Connect(function()
 	else
 		followMode = "Body + Camera"
 	end
+
 	modeToggle.Text = "Mode: " .. followMode
 end)
 
--- Body/Camera facing loop
 RunService.RenderStepped:Connect(function()
-	if not tracking or not selectedPlayer or not selectedPlayer.Character then return end
+	if not tracking then
+		return
+	end
+
+	if not selectedPlayer then
+		return
+	end
+
+	if not selectedPlayer.Character then
+		return
+	end
 
 	local target = selectedPlayer.Character:FindFirstChild(facePart)
 	local myChar = LocalPlayer.Character
 	local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
 
 	if target and myHRP then
-		local targetPos = target.Position
+		local correctedTargetPos =
+			target.Position
+			+ Vector3.new(xCorrector, yCorrector, 0)
+
 		local myPos = myHRP.Position
 
-		local bodyLook = CFrame.lookAt(myPos, targetPos)
+		local bodyLook = CFrame.lookAt(myPos, correctedTargetPos)
 
-		if followMode == "Body + Camera" or followMode == "Body Only" then
+		if followMode == "Body + Camera"
+			or followMode == "Body Only" then
+
 			myHRP.CFrame = bodyLook
 		end
 
-		if followMode == "Body + Camera" or followMode == "Camera Only" then
+		if followMode == "Body + Camera"
+			or followMode == "Camera Only" then
+
 			local camPos = myHRP.Position + Vector3.new(0, 2, 0)
-			Camera.CFrame = CFrame.lookAt(camPos, targetPos)
+
+			Camera.CFrame = CFrame.lookAt(
+				camPos,
+				correctedTargetPos
+			)
 		end
 	end
 end)
 
--- Auto-propel any user-created part toward selected target
 workspace.DescendantAdded:Connect(function(obj)
-	if not tracking then return end
-	if not selectedPlayer or not selectedPlayer.Character then return end
-	if not obj:IsA("BasePart") then return end
+	if not tracking then
+		return
+	end
 
-	-- Check if the object is likely "yours"
+	if not selectedPlayer
+		or not selectedPlayer.Character then
+		return
+	end
+
+	if not obj:IsA("BasePart") then
+		return
+	end
+
 	local isYours = false
 
-	-- Creator tags (common in weapons)
-	if obj:FindFirstChild("creator") and obj.creator.Value == LocalPlayer then
+	if obj:FindFirstChild("creator")
+		and obj.creator.Value == LocalPlayer then
+
 		isYours = true
-	elseif obj:FindFirstChild("Shooter") and obj.Shooter.Value == LocalPlayer then
+
+	elseif obj:FindFirstChild("Shooter")
+		and obj.Shooter.Value == LocalPlayer then
+
 		isYours = true
+
 	elseif obj:IsDescendantOf(LocalPlayer.Character) then
 		isYours = true
 	end
 
 	if isYours then
-		task.wait() -- Allow object to fully appear in workspace
+		task.wait()
 
-		local targetPart = selectedPlayer.Character:FindFirstChild(facePart)
+		local targetPart =
+			selectedPlayer.Character:FindFirstChild(facePart)
+
 		if targetPart then
-			local direction = (targetPart.Position - obj.Position).Unit
-			local speed = 200 -- adjust if needed
-			obj.CFrame = CFrame.lookAt(obj.Position, targetPart.Position)
+			local correctedTargetPos =
+				targetPart.Position
+				+ Vector3.new(xCorrector, yCorrector, 0)
 
-			-- If it's physically simulated
-			if obj:IsA("BasePart") and obj:IsDescendantOf(workspace) then
-				local success = pcall(function()
-					obj.AssemblyLinearVelocity = direction * speed
-				end)
-			end
+			local direction =
+				(correctedTargetPos - obj.Position).Unit
+
+			local speed = 200
+
+			obj.CFrame = CFrame.lookAt(
+				obj.Position,
+				correctedTargetPos
+			)
+
+			pcall(function()
+				obj.AssemblyLinearVelocity =
+					direction * speed
+			end)
 		end
 	end
 end)
