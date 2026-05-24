@@ -536,4 +536,348 @@ local function setupButtonConnections()
     table.insert(activeConnections, RotateRightButton.MouseButton1Up:Connect(function()
         for i = #movementDirection, 1, -1 do
             if movementDirection[i] == "rotateRight" then
-       
+                       table.remove(movementDirection, i)
+            end
+        end
+    end))
+    
+    table.insert(activeConnections, AntiLockButton.MouseButton1Click:Connect(function()
+        isAntiLockOn = not isAntiLockOn
+        if isAntiLockOn then
+            AntiLockButton.Text = "A-L On"
+            -- Turn off Pitch if A-L is turned on
+            if isPitchOn then
+                PitchButton.Text = "Pitch: Off"
+                isPitchOn = false
+            end
+        else
+            AntiLockButton.Text = "A-L"
+        end
+    end))
+    
+    table.insert(activeConnections, PitchButton.MouseButton1Click:Connect(function()
+        if isAntiLockOn then
+            -- If A-L is on, Pitch cannot be turned on
+            PitchButton.Text = "Pitch: Off"
+            isPitchOn = false
+        else
+            -- Toggle Pitch state
+            isPitchOn = not isPitchOn
+            if isPitchOn then
+                PitchButton.Text = "Pitch: On"
+            else
+                PitchButton.Text = "Pitch: Off"
+            end
+        end
+    end))
+end
+
+local function handleInput()
+    local character = player.Character
+    if not character then
+        return
+    end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then
+        return
+    end
+    
+    if FlyEnabled and (humanoid.SeatPart or flightWithoutFlyEnabled) then
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then
+            return
+        end
+        
+        if not VelocityHandler then
+            return
+        end
+        
+        local gyro = rootPart:FindFirstChild(gyroHandlerName)
+        local speed = tonumber(SpeedTextBox.Text) or 1
+        local velocity = Vector3.new()
+        
+        -- Calculate movement based on current orientation
+        local function getMovementCFrame()
+            if isPitchOn and gyro then
+                return gyro.CFrame
+            elseif gyro then
+                -- Flatten the orientation to horizontal plane
+                local lookVector = gyro.CFrame.LookVector
+                return CFrame.new(gyro.Parent.Position, gyro.Parent.Position + Vector3.new(lookVector.X, 0, lookVector.Z))
+            end
+            return rootPart.CFrame
+        end
+        
+        local movementCFrame = getMovementCFrame()
+        
+        for _, direction in ipairs(movementDirection) do
+            if direction == "forward" then
+                velocity += movementCFrame.LookVector * forwardVelocity
+            elseif direction == "backward" then
+                velocity += -movementCFrame.LookVector * forwardVelocity -- Changed to use forwardVelocity
+            elseif direction == "left" then
+                velocity += movementCFrame.RightVector * -leftVelocity
+            elseif direction == "right" then
+                velocity += movementCFrame.RightVector * rightVelocity
+            elseif direction == "up" then
+                velocity += Vector3.new(0, upVelocity, 0)
+            elseif direction == "down" then
+                velocity += Vector3.new(0, -downVelocity, 0)
+            elseif direction == "rotateLeft" and gyro then
+                gyro.CFrame = gyro.CFrame * CFrame.Angles(0, math.rad(-rotationSpeed), 0)
+            elseif direction == "rotateRight" and gyro then
+                gyro.CFrame = gyro.CFrame * CFrame.Angles(0, math.rad(rotationSpeed), 0)
+            end
+        end
+        
+        -- Combined movement handling
+        local thumbstickDirection = Vector2.new(0, 0)
+        
+        -- Try to get thumbstick input with error handling
+        pcall(function()
+            local controlModule = require(player.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+            thumbstickDirection = controlModule:GetMoveVector()
+        end)
+        
+        if #movementDirection > 0 or thumbstickDirection.Magnitude > 0 then
+            -- Handle both controller buttons AND thumbstick input
+            local combinedVelocity = velocity + (
+                movementCFrame.RightVector * thumbstickDirection.X * forwardVelocity * 2 +
+                movementCFrame.LookVector * -thumbstickDirection.Z * forwardVelocity * 2
+            )
+            
+            if isAntiLockOn and humanoid.SeatPart then
+                local seatForward = humanoid.SeatPart.CFrame.LookVector
+                local seatRight = humanoid.SeatPart.CFrame.RightVector
+                local seatUp = humanoid.SeatPart.CFrame.UpVector
+                local seatVelocity = Vector3.new()
+                
+                -- Calculate seat-relative movement
+                for _, direction in ipairs(movementDirection) do
+                    if direction == "forward" then
+                        seatVelocity += seatForward * forwardVelocity
+                    elseif direction == "backward" then
+                        seatVelocity += -seatForward * forwardVelocity -- Corrected: Use negative for backward
+                    elseif direction == "left" then
+                        seatVelocity += -seatRight * leftVelocity
+                    elseif direction == "right" then
+                        seatVelocity += seatRight * rightVelocity
+                    elseif direction == "up" then
+                        seatVelocity += seatUp * upVelocity
+                    elseif direction == "down" then
+                        seatVelocity += -seatUp * downVelocity
+                    end
+                end
+                
+                VelocityHandler.Velocity = seatVelocity * speed
+            else
+                VelocityHandler.Velocity = combinedVelocity * speed
+            end
+        else
+            VelocityHandler.Velocity = Vector3.new()
+        end
+        
+        -- Update gyro orientation to match camera rotation
+        if not isAntiLockOn then
+            local camera = workspace.CurrentCamera
+            if isPitchOn and gyro then
+                -- Full camera alignment including pitch
+                gyro.CFrame = camera.CFrame
+            elseif gyro then
+                -- Horizontal alignment only (yaw)
+                local flatLookVector = camera.CFrame.LookVector * Vector3.new(1, 0, 1)
+                gyro.CFrame = CFrame.new(gyro.Parent.Position, gyro.Parent.Position + flatLookVector)
+            end
+        end
+    else
+        if VelocityHandler then
+            VelocityHandler.Velocity = Vector3.new()
+        end
+    end
+end
+
+-- Backup script to reset button positions
+local function backupButtonPositions()
+    for button, originalPosition in pairs(originalButtonPositions) do
+        -- Check if the button exists and its current position is UDim2.new(0, 0, 0, 0)
+        -- We're checking for exact (0,0,0,0) to avoid interfering with intentional movements.
+        if button and button.Parent and button.Position == UDim2.new(0, 0, 0, 0) then
+            button.Position = originalPosition
+        end
+    end
+end
+
+-- Event Listener Setup
+local function setupEventListeners()
+    setupButtonConnections()
+    table.insert(activeConnections, game:GetService("RunService").RenderStepped:Connect(handleInput))
+    -- Connect the backup script to Heartbeat for continuous checking
+    table.insert(activeConnections, game:GetService("RunService").Heartbeat:Connect(backupButtonPositions))
+end
+
+-- Cleanup (MODIFIED to be more robust)
+local function cleanup()
+    DisableFlight()
+    cleanupConnections()
+    movementDirection = {}
+    controllerEnabled = false
+    
+    if seatConnection then
+        seatConnection:Disconnect()
+    end
+    
+    if unseatConnection then
+        unseatConnection:Disconnect()
+    end
+    
+    seatConnection = nil
+    unseatConnection = nil
+    FlyEnabled = false
+    flightWithoutFlyEnabled = false
+    FwFButton.Text = "FwF"
+    
+    -- Destroy ALL relevant GUIs
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
+    
+    if ControllerGui then
+        ControllerGui:Destroy()
+    end
+    
+    if LeftSideGui then
+        LeftSideGui:Destroy()
+    end
+    
+    -- Clear original button positions on cleanup
+    originalButtonPositions = {}
+end
+
+-- Initialize the GUI and set up event listeners
+local function initialize()
+    initializeGUI()
+    setupEventListeners()
+    
+    -- Connect the Destroy button
+    DestroyButton.MouseButton1Click:Connect(cleanup)
+    
+    -- FlyButton Click
+    FlyButton.MouseButton1Click:Connect(function()
+        FlyEnabled = not FlyEnabled
+        local character = player.Character
+        local humanoid = character and character:FindFirstChild("Humanoid")
+        
+        if FlyEnabled then
+            FlyButton.Text = "UnFly"
+            if flightWithoutFlyEnabled then
+                EnableFlight()
+            elseif humanoid then
+                if seatConnection then
+                    seatConnection:Disconnect()
+                end
+                
+                if unseatConnection then
+                    unseatConnection:Disconnect()
+                end
+                
+                if humanoid.SeatPart then
+                    EnableFlight()
+                else
+                    seatConnection = humanoid:GetPropertyChangedSignal("SeatPart"):Connect(function()
+                        if humanoid.SeatPart then
+                            EnableFlight()
+                        end
+                    end)
+                end
+                
+                unseatConnection = humanoid:GetPropertyChangedSignal("SeatPart"):Connect(function()
+                    if not humanoid.SeatPart then
+                        DisableFlight()
+                    end
+                end)
+            end
+        else
+            FlyButton.Text = "Fly"
+            DisableFlight()
+            
+            if seatConnection then
+                seatConnection:Disconnect()
+            end
+            
+            if unseatConnection then
+                unseatConnection:Disconnect()
+            end
+            
+            seatConnection = nil
+            unseatConnection = nil
+        end
+    end)
+    
+    -- FwFButton Click
+    FwFButton.MouseButton1Click:Connect(function()
+        flightWithoutFlyEnabled = not flightWithoutFlyEnabled
+        if flightWithoutFlyEnabled then
+            FwFButton.Text = "FwF On"
+        else
+            FwFButton.Text = "FwF"
+        end
+        
+        if FlyEnabled and not flightWithoutFlyEnabled then
+            local character = player.Character
+            local humanoid = character and character:FindFirstChild("Humanoid")
+            if humanoid and not humanoid.SeatPart then
+                DisableFlight()
+            end
+        end
+    end)
+    
+    ControllerButton.MouseButton1Click:Connect(function()
+        controllerEnabled = not controllerEnabled
+        ControllerGui.Enabled = controllerEnabled
+        LeftSideGui.Enabled = controllerEnabled
+    end)
+    
+    -- Minimize Button Logic
+    MinimizeButton.MouseButton1Click:Connect(function()
+        isGuiMinimized = not isGuiMinimized
+        
+        if isGuiMinimized then
+            MinimizeButton.Text = "⇩"
+            -- Store the current position BEFORE minimizing
+            originalMainFramePosition = MainFrame.Position
+            
+            -- Animate the MainFrame to slide UPWARDS, keeping enough height for the title
+            MainFrame:TweenSizeAndPosition(
+                UDim2.new(0, 200, 0, 50), -- New Size (height is 50 for the title)
+                UDim2.new(MainFrame.Position.X.Scale, MainFrame.Position.X.Offset, 
+                         MainFrame.Position.Y.Scale, MainFrame.Position.Y.Offset + (MainFrame.Size.Y.Offset - 50) / 2), -- Center vertically
+                Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true
+            )
+            
+            -- Make sure the Title is visible and scales to fill the minimized frame's height
+            Title.Visible = true 
+            Title.Size = UDim2.new(1, 0, 1, 0) -- Title takes full height of the 50px minimized frame
+            Title.Position = UDim2.new(0, 0, 0, 0) -- Ensure title is at the top
+            
+            InnerFrame.Visible = false -- Hide the rest of the GUI
+        else
+            MinimizeButton.Text = "⇧"
+            -- Animate the MainFrame to slide back to original size/position
+            MainFrame:TweenSizeAndPosition(
+                UDim2.new(0, 200, 0, 230), -- Original Size
+                originalMainFramePosition, -- Use the STORED position
+                Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true
+            )
+            
+            -- Restore Title to its original size and position, make InnerFrame visible again
+            Title.Visible = true
+            Title.Size = UDim2.new(1, 0, 0.2, 0) -- Revert title to original size (20% of frame height)
+            Title.Position = UDim2.new(0, 0, 0, 0) -- Ensure title is at the top
+            InnerFrame.Visible = true
+        end
+    end)
+end
+
+-- Start the script
+initialize()
