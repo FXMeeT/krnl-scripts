@@ -1,0 +1,234 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local plr = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+
+----------------------------------------------------
+-- GUI
+----------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "VehicleFly"
+gui.ResetOnSpawn = false
+gui.Parent = plr:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 240, 0, 310)
+frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundTransparency = 1
+title.Text = "Vehicle Fly"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+
+local speedBox = Instance.new("TextBox", frame)
+speedBox.Size = UDim2.new(0, 100, 0, 28)
+speedBox.Position = UDim2.new(0.5, -50, 0, 45)
+speedBox.Text = "120"
+speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+speedBox.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 6)
+
+----------------------------------------------------
+-- ROTATION SENSITIVITY INPUT
+----------------------------------------------------
+local sensBox = Instance.new("TextBox", frame)
+sensBox.Size = UDim2.new(0, 100, 0, 28)
+sensBox.Position = UDim2.new(0.5, -50, 0, 78)
+sensBox.Text = "0.15"
+sensBox.PlaceholderText = "Rotation Sens"
+sensBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+sensBox.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", sensBox).CornerRadius = UDim.new(0, 6)
+
+local function button(txt, y)
+	local b = Instance.new("TextButton", frame)
+	b.Size = UDim2.new(0.8, 0, 0, 30)
+	b.Position = UDim2.new(0.1, 0, 0, y)
+	b.Text = txt
+	b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.Font = Enum.Font.GothamBold
+	b.TextScaled = true
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	return b
+end
+
+local flyBtn = button("FLY : OFF", 110)
+local noclipBtn = button("NOCLIP : OFF", 150)
+local delBtn = button("DELETE", 190)
+
+----------------------------------------------------
+-- INPUT
+----------------------------------------------------
+local input = {fw=false,bw=false,lt=false,rt=false,up=false,down=false}
+
+local function hold(btn, key)
+	btn.MouseButton1Down:Connect(function() input[key]=true end)
+	btn.MouseButton1Up:Connect(function() input[key]=false end)
+	btn.MouseLeave:Connect(function() input[key]=false end)
+end
+
+----------------------------------------------------
+-- MOVEMENT PAD
+----------------------------------------------------
+local m = Instance.new("Frame", gui)
+m.Size = UDim2.new(0, 160, 0, 160)
+m.Position = UDim2.new(0.8, 0, 0.6, 0)
+m.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Instance.new("UICorner", m).CornerRadius = UDim.new(1, 0)
+
+local function mb(t, x, y, k)
+	local b = Instance.new("TextButton", m)
+	b.Size = UDim2.new(0, 40, 0, 40)
+	b.Position = UDim2.new(0, x, 0, y)
+	b.Text = t
+	b.TextScaled = true
+	b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	hold(b, k)
+	return b
+end
+
+mb("▲", 60, 0, "fw")
+mb("▼", 60, 120, "bw")
+mb("◀", 0, 60, "lt")
+mb("▶", 120, 60, "rt")
+mb("↑", 120, 0, "up")
+mb("↓", 120, 120, "down")
+
+----------------------------------------------------
+-- VEHICLE
+----------------------------------------------------
+local vehicle, primary, bv, bg
+local flying = false
+local noclip = false
+
+local function getVehicle()
+	local c = plr.Character
+	local h = c and c:FindFirstChildOfClass("Humanoid")
+	local seat = h and h.SeatPart
+	local model = seat and seat:FindFirstAncestorOfClass("Model")
+	if not model then return nil, seat end
+	return model, model.PrimaryPart or seat
+end
+
+local function clean(m)
+	for _,v in ipairs(m:GetDescendants()) do
+		if v:IsA("BodyVelocity") or v:IsA("BodyGyro") or v:IsA("LinearVelocity")
+		or v:IsA("AngularVelocity") or v:IsA("VectorForce") then
+			pcall(function() v:Destroy() end)
+		end
+	end
+end
+
+----------------------------------------------------
+-- ENABLE / DISABLE
+----------------------------------------------------
+local function enable()
+	vehicle, primary = getVehicle()
+	if not vehicle or not primary then return end
+
+	clean(vehicle)
+
+	bv = Instance.new("BodyVelocity", primary)
+	bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+	bv.P = 50000
+
+	bg = Instance.new("BodyGyro", primary)
+	bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+	bg.P = 300000
+	bg.D = 200
+
+	for _,v in ipairs(vehicle:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.AssemblyLinearVelocity = Vector3.zero
+			v.AssemblyAngularVelocity = Vector3.zero
+			pcall(function() v:SetNetworkOwner(plr) end)
+		end
+	end
+
+	flying = true
+	flyBtn.Text = "FLY : ON"
+end
+
+local function disable()
+	flying = false
+	if bv then bv:Destroy() bv=nil end
+	if bg then bg:Destroy() bg=nil end
+	flyBtn.Text = "FLY : OFF"
+end
+
+----------------------------------------------------
+-- BUTTONS
+----------------------------------------------------
+flyBtn.MouseButton1Click:Connect(function()
+	if flying then disable() else enable() end
+end)
+
+noclipBtn.MouseButton1Click:Connect(function()
+	noclip = not noclip
+	noclipBtn.Text = noclip and "NOCLIP : ON" or "NOCLIP : OFF"
+end)
+
+delBtn.MouseButton1Click:Connect(function()
+	disable()
+	gui:Destroy()
+end)
+
+----------------------------------------------------
+-- LOOP
+----------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	if not flying or not primary then return end
+
+	local speed = tonumber(speedBox.Text) or 120
+	local sens = tonumber(sensBox.Text) or 0.15
+
+	local cf = cam.CFrame
+
+	local look = Vector3.new(cf.LookVector.X,0,cf.LookVector.Z)
+	local right = Vector3.new(cf.RightVector.X,0,cf.RightVector.Z)
+
+	if look.Magnitude > 0 then look = look.Unit end
+	if right.Magnitude > 0 then right = right.Unit end
+
+	local move = Vector3.zero
+
+	if input.fw then move += look end
+	if input.bw then move -= look end
+	if input.rt then move += right end
+	if input.lt then move -= right end
+	if input.up then move += Vector3.new(0,1,0) end
+	if input.down then move -= Vector3.new(0,1,0) end
+
+	if move.Magnitude > 0 then move = move.Unit end
+
+	-- movement smoothing
+	bv.Velocity = bv.Velocity:Lerp(move * speed, 0.25)
+
+	------------------------------------------------
+	-- ROTATION SENSITIVITY CONTROL (NEW)
+	------------------------------------------------
+	local targetCF = CFrame.lookAt(primary.Position, primary.Position + look)
+
+	-- sensitivity controls how fast it follows camera
+	bg.CFrame = bg.CFrame:Lerp(targetCF, math.clamp(sens, 0.01, 1))
+
+	primary.AssemblyLinearVelocity *= 0.3
+	primary.AssemblyAngularVelocity *= 0.3
+
+	if noclip then
+		for _,v in ipairs(vehicle:GetDescendants()) do
+			if v:IsA("BasePart") then
+				v.CanCollide = false
+			end
+		end
+	end
+end)
