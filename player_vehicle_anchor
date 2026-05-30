@@ -1,109 +1,62 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local player = Players.LocalPlayer
-
-local charAnchor = false
-local vehicleAnchor = false
-
-local charConnection
-local vehicleConnection
-
 local gui = Instance.new("ScreenGui")
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 130, 0, 55)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundTransparency = 0.2
+frame.Parent = gui
+
 local button1 = Instance.new("TextButton")
-button1.Size = UDim2.new(0,80,0,25)
-button1.Position = UDim2.new(0,10,0,10)
+button1.Size = UDim2.new(1, -4, 0, 24)
+button1.Position = UDim2.new(0, 2, 0, 2)
 button1.Text = "ANCHOR OFF"
-button1.Parent = gui
+button1.Parent = frame
 
 local button2 = Instance.new("TextButton")
-button2.Size = UDim2.new(0,120,0,25)
-button2.Position = UDim2.new(0,10,0,40)
+button2.Size = UDim2.new(1, -4, 0, 24)
+button2.Position = UDim2.new(0, 2, 0, 28)
 button2.Text = "A+V OFF"
-button2.Parent = gui
+button2.Parent = frame
 
-local function getCharacter()
-	return player.Character or player.CharacterAdded:Wait()
-end
+-- Draggable frame (PC + Mobile)
+local UIS = game:GetService("UserInputService")
 
-local function setCharacterAnchor(state)
-	charAnchor = state
+local dragging = false
+local dragStart
+local startPos
 
-	if charConnection then
-		charConnection:Disconnect()
-		charConnection = nil
-	end
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
 
-	local character = getCharacter()
-	local humanoid = character:WaitForChild("Humanoid")
-	local root = character:WaitForChild("HumanoidRootPart")
-
-	if state then
-		root.Anchored = true
-		humanoid.WalkSpeed = 0
-		humanoid.JumpPower = 0
-		humanoid.AutoRotate = false
-
-		charConnection = RunService.Heartbeat:Connect(function()
-			root.AssemblyLinearVelocity = Vector3.zero
-			root.AssemblyAngularVelocity = Vector3.zero
-		end)
-
-		button1.Text = "ANCHOR ON"
-	else
-		root.Anchored = false
-		humanoid.WalkSpeed = 16
-		humanoid.JumpPower = 50
-		humanoid.AutoRotate = true
-
-		button1.Text = "ANCHOR OFF"
-	end
-end
-
-local function setVehicleAnchor(state)
-	vehicleAnchor = state
-
-	if vehicleConnection then
-		vehicleConnection:Disconnect()
-		vehicleConnection = nil
-	end
-
-	local character = getCharacter()
-	local humanoid = character:WaitForChild("Humanoid")
-
-	if state then
-		button2.Text = "A+V ON"
-
-		vehicleConnection = RunService.Heartbeat:Connect(function()
-			local seat = humanoid.SeatPart
-
-			if seat then
-				local model = seat:FindFirstAncestorOfClass("Model")
-
-				if model then
-					for _, obj in ipairs(model:GetDescendants()) do
-						if obj:IsA("BasePart") then
-							obj.Anchored = true
-							obj.AssemblyLinearVelocity = Vector3.zero
-							obj.AssemblyAngularVelocity = Vector3.zero
-						end
-					end
-				end
-			end
-
-			local root = character:FindFirstChild("HumanoidRootPart")
-			if root then
-				root.Anchored = true
-				root.AssemblyLinearVelocity = Vector3.zero
-				root.AssemblyAngularVelocity = Vector3.zero
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
 			end
 		end)
-	else
-		button2.Text = "A+V OFF"
+	end
+end)
 
+UIS.InputChanged:Connect(function(input)
+	if dragging and (
+		input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch
+	) then
+		local delta = input.Position - dragStart
+
+		frame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
 		local seat = humanoid.SeatPart
 		if seat then
 			local model = seat:FindFirstAncestorOfClass("Model")
